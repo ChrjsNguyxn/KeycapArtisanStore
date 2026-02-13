@@ -1,1 +1,0 @@
-(Nơi để file ảnh, icon, config file)

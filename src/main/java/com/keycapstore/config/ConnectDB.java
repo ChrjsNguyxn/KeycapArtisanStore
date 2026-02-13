@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class ConnectDB {
     // Thong tin cau hinh DB
-    private static final String SERVER_NAME = "localhost";
+    private static final String SERVER_NAME = "127.0.0.1";
     private static final String PORT = "1433";
     private static final String DB_NAME = "JavaKADB";
     private static final String USER = "sa";
@@ -19,22 +19,21 @@ public class ConnectDB {
     public static Connection getConnection() {
         Connection conn = null;
         try {
-            // Tạo chuỗi kết nối
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+
             String url = String.format("jdbc:sqlserver://%s:%s;databaseName=%s;encrypt=%s;trustServerCertificate=%s;",
                     SERVER_NAME, PORT, DB_NAME, ENCRYPT, TRUST_CERT);
 
-            // Kết nối
             conn = DriverManager.getConnection(url, USER, PASSWORD);
             System.out.println("Kết nối SQL Server thành công!");
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Kết nối thất bại! Hãy kiểm tra lại User/Pass hoặc tên Database.");
+            System.err.println("Kết nối thất bại! Lỗi: " + e.getMessage());
         }
         return conn;
     }
 
-    // Chay thu ket noi
     public static void main(String[] args) {
         getConnection();
     }

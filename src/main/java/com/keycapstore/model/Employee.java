@@ -12,8 +12,22 @@ public class Employee {
     private String role;
     private String status;
     private LocalDateTime createdAt;
+    private String pinCode;
 
     public Employee() {
+    }
+
+    public Employee(int employeeId, String username, String password, String fullName, String email, String phone,
+            String role, String status, String pinCode) {
+        this.employeeId = employeeId;
+        this.username = username;
+        this.password = password;
+        this.fullName = fullName;
+        this.email = email;
+        this.phone = phone;
+        this.role = role;
+        this.status = status;
+        this.pinCode = pinCode;
     }
 
     public int getEmployeeId() {
@@ -87,5 +101,13 @@ public class Employee {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getPinCode() {
+        return pinCode;
+    }
+
+    public void setPinCode(String pinCode) {
+        this.pinCode = pinCode;
     }
 }

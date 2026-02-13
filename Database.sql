@@ -1,5 +1,4 @@
--- TẠO DATABASE (Chạy dòng này trước nếu chưa có DB)
--- Tao Database moi
+
 USE master;
 GO
 IF EXISTS (SELECT name FROM sys.databases WHERE name = N'JavaKADB')
