@@ -12,9 +12,7 @@ GO
 USE JavaKADB;
 GO
 
--- Phan 1: Quan tri va Nhan su
 
--- Bang Nhan vien
 CREATE TABLE employees (
   employee_id INT IDENTITY(1,1) PRIMARY KEY,
   username VARCHAR(50) NOT NULL UNIQUE,
@@ -22,6 +20,7 @@ CREATE TABLE employees (
   full_name VARCHAR(100) NOT NULL,
   email VARCHAR(100) UNIQUE,
   phone VARCHAR(15),
+  pin_code VARCHAR(10),
   role VARCHAR(20) DEFAULT 'sales_manager' CHECK (role IN ('super_admin', 'warehouse_manager', 'sales_manager')),
   status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'banned', 'quit')),
   created_at DATETIME DEFAULT GETDATE()
@@ -136,6 +135,7 @@ CREATE TABLE customers (
   phone_number VARCHAR(15),
   address NVARCHAR(MAX),
   total_spending DECIMAL(15,2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active',
   created_at DATETIME DEFAULT GETDATE(),
   FOREIGN KEY (rank_id) REFERENCES customer_ranks (rank_id)
 );
@@ -237,8 +237,8 @@ CREATE TABLE payments (
 -- Du lieu mau
 
 -- Admin mac dinh
-INSERT INTO employees (username, password, full_name, email, role, status)
-VALUES ('admin', '123', 'Super Admin', 'admin@keycap.store', 'super_admin', 'active');
+INSERT INTO employees (username, password, full_name, email, role, status, pin_code)
+VALUES ('admin', '123', 'Super Admin', 'admin@keycap.store', 'super_admin', 'active', '888888');
 
 -- Hang thanh vien
 INSERT INTO customer_ranks (name, min_spending, discount_percent, description)

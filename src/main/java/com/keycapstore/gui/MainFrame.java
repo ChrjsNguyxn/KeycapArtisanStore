@@ -47,7 +47,7 @@ public class MainFrame extends JFrame {
         } else if (currentUser instanceof Customer) {
 
             Customer cus = (Customer) currentUser;
-            lblWelcome.setText("Khách hàng: " + cus.getFullname());
+            lblWelcome.setText("Khách hàng: " + cus.getFullName());
         }
 
         JButton btnLogout = new JButton("Đăng xuất");

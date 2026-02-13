@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.ConvolveOp;
 import java.awt.image.Kernel;
 import java.net.URL;
+import java.util.prefs.Preferences;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -24,6 +25,7 @@ public class ModernLoginDialog extends JFrame {
 
     private JTextField txtLoginUser;
     private JPasswordField txtLoginPass;
+    private JCheckBox chkRemember;
 
     private JTextField txtRegUser, txtRegFullName, txtRegEmail, txtRegPhone, txtRegAddress;
     private JPasswordField txtRegPass, txtRegConfirmPass;
@@ -134,6 +136,9 @@ public class ModernLoginDialog extends JFrame {
 
         glassPanel.add(rightContainer);
         contentPane.add(roundedGlass);
+
+        // Tu dong dien thong tin neu da luu truoc do
+        loadCredentials();
     }
 
     private JPanel createControlPanel() {
@@ -209,6 +214,14 @@ public class ModernLoginDialog extends JFrame {
                 txtLoginPass.setEchoChar('•');
         });
         pnl.add(chkShowPass, gbc);
+
+        gbc.gridy++;
+        chkRemember = new JCheckBox("Remember Me");
+        chkRemember.setOpaque(false);
+        chkRemember.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        chkRemember.setForeground(COLOR_PRIMARY);
+        chkRemember.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        pnl.add(chkRemember, gbc);
 
         gbc.gridy++;
         JLabel lblForgot = new JLabel("Forgot Password?");
@@ -466,7 +479,18 @@ public class ModernLoginDialog extends JFrame {
         btnBack.addActionListener(e -> cardLayout.show(cardsPanel, "LOGIN"));
         pnl.add(btnBack, gbc);
 
-        return pnl;
+        JScrollPane scrollPane = new JScrollPane(pnl);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(scrollPane, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JButton createButton(String text) {
@@ -481,6 +505,17 @@ public class ModernLoginDialog extends JFrame {
         return btn;
     }
 
+    private void loadCredentials() {
+        Preferences prefs = Preferences.userNodeForPackage(ModernLoginDialog.class);
+        String u = prefs.get("username", "");
+        String p = prefs.get("password", "");
+        if (!u.isEmpty()) {
+            txtLoginUser.setText(u);
+            txtLoginPass.setText(p);
+            chkRemember.setSelected(true);
+        }
+    }
+
     private void handleLogin() {
         String u = txtLoginUser.getText();
         String p = new String(txtLoginPass.getPassword());
@@ -490,26 +525,39 @@ public class ModernLoginDialog extends JFrame {
             return;
         }
 
+        // Xu ly luu mat khau (Remember Me)
+        Preferences prefs = Preferences.userNodeForPackage(ModernLoginDialog.class);
+        if (chkRemember.isSelected()) {
+            prefs.put("username", u);
+            prefs.put("password", p);
+        } else {
+            prefs.remove("username");
+            prefs.remove("password");
+        }
+
         Employee emp = employeeBUS.login(u, p);
         if (emp != null) {
-            if ("Banned".equalsIgnoreCase(emp.getStatus()) || "Quit".equalsIgnoreCase(emp.getStatus())) {
-                JOptionPane.showMessageDialog(this, "Tài khoản này đã bị vô hiệu hóa!", "Lỗi truy cập",
-                        JOptionPane.ERROR_MESSAGE);
+
+            String currentPin = emp.getPinCode();
+            if (currentPin == null || currentPin.trim().isEmpty()) {
+
+                openMainFrame(emp);
+                this.dispose();
                 return;
             }
 
             if (showPinDialog(emp)) {
-
                 openMainFrame(emp);
-            } else {
-
+                this.dispose();
             }
+
             return;
         }
 
         Customer cus = customerBUS.login(u, p);
         if (cus != null) {
             openMainFrame(cus);
+            this.dispose();
             return;
         }
 
@@ -520,13 +568,12 @@ public class ModernLoginDialog extends JFrame {
     private void handleRegister() {
         String u = txtRegUser.getText();
         String p = new String(txtRegPass.getPassword());
-        String cp = new String(txtRegConfirmPass.getPassword()); // Lấy mật khẩu xác nhận
+        String cp = new String(txtRegConfirmPass.getPassword());
         String n = txtRegFullName.getText();
         String e = txtRegEmail.getText();
         String ph = txtRegPhone.getText();
         String addr = txtRegAddress.getText();
 
-        // Bỏ check ph.isEmpty() vì Phone là optional
         if (u.isEmpty() || p.isEmpty() || cp.isEmpty() || n.isEmpty() || e.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please fill in all required fields!");
             return;
@@ -839,7 +886,6 @@ class RoundedTextField extends JTextField {
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
         super.paintComponent(g);
 
-        // Vẽ Placeholder nếu text rỗng và không có focus
         if (getText().isEmpty() && placeholder != null && !hasFocus()) {
             g2.setColor(new Color(100, 100, 100, 150)); // Màu xám mờ
             g2.setFont(new Font("Segoe UI", Font.ITALIC, 11));
@@ -870,33 +916,5 @@ class RoundedPasswordField extends JPasswordField {
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
         super.paintComponent(g);
         g2.dispose();
-    }
-
-    private boolean showPinDialog(String correctPin) {
-        JPasswordField txtPin = new JPasswordField();
-        txtPin.setFont(new Font("Arial", Font.BOLD, 24));
-        txtPin.setHorizontalAlignment(JTextField.CENTER);
-
-        Object[] message = {
-                "<html><h3 style='color:#8B0000;'>⚠️ BẢO MẬT CẤP 2 (SECURITY ALERT)</h3>"
-                        + "Tài khoản này yêu cầu Mã PIN định danh.<br>"
-                        + "Vui lòng nhập mã PIN để tiếp tục:</html>",
-                txtPin
-        };
-
-        int option = JOptionPane.showConfirmDialog(this, message, "Xác minh danh tính", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (option == JOptionPane.OK_OPTION) {
-            String inputPin = new String(txtPin.getPassword());
-            if (inputPin.equals(correctPin)) {
-                return true; // Mã đúng
-            } else {
-                JOptionPane.showMessageDialog(this, "MÃ PIN KHÔNG CHÍNH XÁC!\nHệ thống từ chối truy cập.", "CẢNH BÁO",
-                        JOptionPane.ERROR_MESSAGE);
-                return false;
-            }
-        }
-        return false; // Người dùng bấm Cancel
     }
 }

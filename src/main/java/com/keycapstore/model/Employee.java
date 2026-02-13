@@ -1,7 +1,5 @@
 package com.keycapstore.model;
 
-import java.time.LocalDateTime;
-
 public class Employee {
     private int employeeId;
     private String username;
@@ -11,7 +9,6 @@ public class Employee {
     private String phone;
     private String role;
     private String status;
-    private LocalDateTime createdAt;
     private String pinCode;
 
     public Employee() {
@@ -30,11 +27,11 @@ public class Employee {
         this.pinCode = pinCode;
     }
 
+    // --- GETTER & SETTER ---
     public int getEmployeeId() {
         return employeeId;
     }
 
-    // Getter va Setter
     public void setEmployeeId(int employeeId) {
         this.employeeId = employeeId;
     }
@@ -93,14 +90,6 @@ public class Employee {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     public String getPinCode() {

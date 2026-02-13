@@ -5,14 +5,13 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnectDB {
-    // Thong tin cau hinh DB
+
     private static final String SERVER_NAME = "127.0.0.1";
     private static final String PORT = "1433";
     private static final String DB_NAME = "JavaKADB";
     private static final String USER = "sa";
     private static final String PASSWORD = "123";
 
-    // Cau hinh SSL
     private static final boolean ENCRYPT = false;
     private static final boolean TRUST_CERT = true;
 

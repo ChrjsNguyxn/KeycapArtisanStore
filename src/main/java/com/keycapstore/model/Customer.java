@@ -1,10 +1,10 @@
 package com.keycapstore.model;
 
 public class Customer {
-    private int id;
+    private int customerId;
     private String username;
     private String password;
-    private String fullname;
+    private String fullName;
     private String email;
     private String phone;
     private String address;
@@ -13,34 +13,34 @@ public class Customer {
     public Customer() {
     }
 
-    public Customer(int id, String username, String password, String fullname, String email, String phone,
+    public Customer(int customerId, String username, String password, String fullName, String email, String phone,
             String address, String status) {
-        this.id = id;
+        this.customerId = customerId;
         this.username = username;
         this.password = password;
-        this.fullname = fullname;
+        this.fullName = fullName;
         this.email = email;
         this.phone = phone;
         this.address = address;
         this.status = status;
     }
 
-    public Customer(String username, String password, String fullname, String email, String phone, String address) {
+    public Customer(String username, String password, String fullName, String email, String phone, String address) {
         this.username = username;
         this.password = password;
-        this.fullname = fullname;
+        this.fullName = fullName;
         this.email = email;
         this.phone = phone;
         this.address = address;
         this.status = "Active";
     }
 
-    public int getId() {
-        return id;
+    public int getCustomerId() {
+        return customerId;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setCustomerId(int customerId) {
+        this.customerId = customerId;
     }
 
     public String getUsername() {
@@ -59,12 +59,12 @@ public class Customer {
         this.password = password;
     }
 
-    public String getFullname() {
-        return fullname;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setFullname(String fullname) {
-        this.fullname = fullname;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     public String getEmail() {
