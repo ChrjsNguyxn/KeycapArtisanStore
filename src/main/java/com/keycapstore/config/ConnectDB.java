@@ -10,7 +10,7 @@ public class ConnectDB {
     private static final String PORT = "1433";
     private static final String DB_NAME = "JavaKADB";
     private static final String USER = "sa";
-    private static final String PASSWORD = "123";
+    private static final String PASSWORD = "sa";
 
     private static final boolean ENCRYPT = false;
     private static final boolean TRUST_CERT = true;
