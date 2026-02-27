@@ -10,6 +10,10 @@ public class Customer {
     private String address;
     private String status;
 
+    private double totalSpending;
+    private String rankName;
+    private double currentDiscount;
+
     public Customer() {
     }
 
@@ -33,6 +37,17 @@ public class Customer {
         this.phone = phone;
         this.address = address;
         this.status = "Active";
+    }
+
+    // Constructor cho view hiển thị Rank
+    public Customer(int customerId, String fullName, String phone, double totalSpending, String rankName,
+            double currentDiscount) {
+        this.customerId = customerId;
+        this.fullName = fullName;
+        this.phone = phone;
+        this.totalSpending = totalSpending;
+        this.rankName = rankName;
+        this.currentDiscount = currentDiscount;
     }
 
     public int getCustomerId() {
@@ -97,5 +112,29 @@ public class Customer {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public double getTotalSpending() {
+        return totalSpending;
+    }
+
+    public void setTotalSpending(double totalSpending) {
+        this.totalSpending = totalSpending;
+    }
+
+    public String getRankName() {
+        return rankName;
+    }
+
+    public void setRankName(String rankName) {
+        this.rankName = rankName;
+    }
+
+    public double getCurrentDiscount() {
+        return currentDiscount;
+    }
+
+    public void setCurrentDiscount(double currentDiscount) {
+        this.currentDiscount = currentDiscount;
     }
 }

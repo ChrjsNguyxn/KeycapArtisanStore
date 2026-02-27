@@ -4,6 +4,7 @@ import com.keycapstore.bus.EmployeeBUS;
 import com.keycapstore.model.Employee;
 import com.keycapstore.utils.ModernButton;
 import com.keycapstore.utils.ModernTable;
+import com.keycapstore.utils.ThemeColor;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -11,38 +12,37 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
-public class EmployeePanel extends JPanel {
+public class EmployeePanel extends JPanel implements Refreshable {
 
-    private ModernTable table; // Dùng bảng xịn
+    private ModernTable table;
     private DefaultTableModel model;
     private JTextField txtUser, txtPass, txtName, txtEmail, txtPin, txtPhone;
     private JComboBox<String> cbRole, cbStatus;
-    private ModernButton btnAdd, btnUpdate, btnDelete, btnClear; // Dùng nút xịn
+    private ModernButton btnAdd, btnUpdate, btnDelete, btnClear;
     private EmployeeBUS bus;
     private int selectedId = -1;
 
     public EmployeePanel() {
         bus = new EmployeeBUS();
+
+        bus.fixGhostAccounts();
+
         setLayout(new BorderLayout(20, 20));
-        setBackground(new Color(255, 252, 245)); // Nền màu kem sáng
+        setBackground(ThemeColor.BG_LIGHT); // Nền màu kem sáng
         setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // 1. HEADER TITLE
         JLabel lblTitle = new JLabel("QUẢN LÝ NHÂN SỰ");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        lblTitle.setForeground(new Color(62, 54, 46));
+        lblTitle.setForeground(ThemeColor.PRIMARY);
         add(lblTitle, BorderLayout.NORTH);
 
         // 2. FORM PANEL (Bên Phải)
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(Color.WHITE);
-        formPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
-                new EmptyBorder(20, 20, 20, 20)));
-        formPanel.setPreferredSize(new Dimension(320, 0));
+        formPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 0, 8, 0); // Khoảng cách giữa các ô
+        gbc.insets = new Insets(8, 0, 8, 0);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -57,7 +57,8 @@ public class EmployeePanel extends JPanel {
         gbc.gridy++;
         formPanel.add(createLabel("Chức vụ:"), gbc);
         gbc.gridy++;
-        cbRole = new JComboBox<>(new String[] { "Sales", "Warehouse", "SuperAdmin" });
+        // Fix: Dung gia tri khop voi Database (sales_manager, etc.)
+        cbRole = new JComboBox<>(new String[] { "sales_manager", "warehouse_manager", "super_admin" });
         cbRole.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cbRole.setBackground(Color.WHITE);
         formPanel.add(cbRole, gbc);
@@ -74,49 +75,49 @@ public class EmployeePanel extends JPanel {
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 10, 10));
         btnPanel.setOpaque(false);
 
-        btnAdd = new ModernButton("THÊM", new Color(46, 204, 113));
-        btnUpdate = new ModernButton("SỬA", new Color(52, 152, 219));
-        btnDelete = new ModernButton("XÓA", new Color(231, 76, 60));
-        btnClear = new ModernButton("MỚI", new Color(241, 196, 15));
+        btnAdd = new ModernButton("THÊM", ThemeColor.SUCCESS);
+        btnUpdate = new ModernButton("SỬA", ThemeColor.INFO);
+        btnDelete = new ModernButton("XÓA", ThemeColor.DANGER);
+        btnClear = new ModernButton("MỚI", ThemeColor.WARNING);
 
         btnPanel.add(btnAdd);
         btnPanel.add(btnUpdate);
         btnPanel.add(btnDelete);
         btnPanel.add(btnClear);
 
-        // Mặc định disable nút Sửa/Xóa khi chưa chọn dòng nào
         btnUpdate.setEnabled(false);
         btnDelete.setEnabled(false);
 
         gbc.gridy++;
-        gbc.insets = new Insets(30, 0, 0, 0); // Cách xa form một chút
+        gbc.insets = new Insets(30, 0, 0, 0);
         formPanel.add(btnPanel, gbc);
 
-        // 3. TABLE PANEL (Ở Giữa)
         JPanel tablePanel = new JPanel(new BorderLayout());
         tablePanel.setBackground(Color.WHITE);
         tablePanel.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
 
         String[] headers = { "ID", "User", "Họ Tên", "SĐT", "Role", "Email", "PIN", "Status" };
         model = new DefaultTableModel(headers, 0);
-        table = new ModernTable(model); // <--- DÙNG TABLE XỊN Ở ĐÂY
+        table = new ModernTable(model);
+        table.setSelectionBackground(new Color(255, 224, 178));
+        table.setSelectionForeground(Color.BLACK);
 
-        // Sự kiện click
         table.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                int row = table.getSelectedRow();
+                int row = table.rowAtPoint(e.getPoint());
                 if (row >= 0) {
+                    table.setRowSelectionInterval(row, row);
                     selectedId = Integer.parseInt(model.getValueAt(row, 0).toString());
                     txtUser.setText(model.getValueAt(row, 1).toString());
                     txtUser.setEditable(false);
 
-                    // Disable mật khẩu vì Update không hỗ trợ đổi pass (tránh gây hiểu nhầm)
                     txtPass.setText("");
-                    txtPass.setEditable(false);
+                    txtPass.setEditable(true);
 
                     txtName.setText(model.getValueAt(row, 2).toString());
                     txtPhone.setText(model.getValueAt(row, 3) != null ? model.getValueAt(row, 3).toString() : "");
-                    cbRole.setSelectedItem(model.getValueAt(row, 4).toString());
+                    cbRole.setSelectedItem(
+                            model.getValueAt(row, 4) != null ? model.getValueAt(row, 4).toString() : "sales_manager");
                     txtEmail.setText(model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : "");
                     txtPin.setText(model.getValueAt(row, 6) != null ? model.getValueAt(row, 6).toString() : "");
                     cbStatus.setSelectedItem(model.getValueAt(row, 7).toString());
@@ -124,6 +125,9 @@ public class EmployeePanel extends JPanel {
                     btnAdd.setEnabled(false);
                     btnUpdate.setEnabled(true);
                     btnDelete.setEnabled(true);
+                } else {
+
+                    clearForm();
                 }
             }
         });
@@ -134,16 +138,37 @@ public class EmployeePanel extends JPanel {
         setupActions();
 
         add(tablePanel, BorderLayout.CENTER);
-        add(formPanel, BorderLayout.EAST);
+
+        JScrollPane scrollPane = new JScrollPane(formPanel);
+        scrollPane.setPreferredSize(new Dimension(340, 0));
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        add(scrollPane, BorderLayout.EAST);
+
+        // Click ra vung trong bat ky de clear form
+        MouseAdapter outsideClick = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                clearForm();
+            }
+        };
+        this.addMouseListener(outsideClick);
+        formPanel.addMouseListener(outsideClick);
 
         loadData();
     }
 
-    // Hàm tạo Label chuẩn đẹp
+    @Override
+    public void refresh() {
+        loadData();
+    }
+
     private JLabel createLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(new Color(62, 54, 46));
+        lbl.setForeground(ThemeColor.PRIMARY);
         return lbl;
     }
 
@@ -151,7 +176,7 @@ public class EmployeePanel extends JPanel {
         gbc.gridy++;
         p.add(createLabel(label), gbc);
         gbc.gridy++;
-        c.setPreferredSize(new Dimension(0, 30)); // Input cao 30px
+        c.setPreferredSize(new Dimension(280, 30));
         c.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         c.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.LIGHT_GRAY),
@@ -172,7 +197,7 @@ public class EmployeePanel extends JPanel {
 
     private void setupActions() {
         btnAdd.addActionListener(e -> {
-            // 1. Validate dữ liệu đầu vào (Không để trống các trường quan trọng)
+
             if (txtUser.getText().trim().isEmpty() || txtPass.getText().trim().isEmpty()
                     || txtName.getText().trim().isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ: Tên đăng nhập, Mật khẩu và Họ tên!",
@@ -180,7 +205,6 @@ public class EmployeePanel extends JPanel {
                 return;
             }
 
-            // 2. Check trùng trước để báo lỗi rõ ràng
             if (bus.checkDuplicate(txtUser.getText().trim())) {
                 JOptionPane.showMessageDialog(this, "Tên đăng nhập này đã tồn tại!", "Trùng lặp",
                         JOptionPane.ERROR_MESSAGE);
@@ -213,7 +237,7 @@ public class EmployeePanel extends JPanel {
                 return;
             }
             if (selectedId == 1) {
-                JOptionPane.showMessageDialog(this, "KHÔNG THỂ XÓA ROOT ADMIN!", "Cảnh báo",
+                JOptionPane.showMessageDialog(this, "⛔ CẤM: Không thể xóa Root Admin!", "Cảnh báo",
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -246,6 +270,8 @@ public class EmployeePanel extends JPanel {
             emp.setRole(cbRole.getSelectedItem().toString());
             emp.setPinCode(txtPin.getText().trim());
             emp.setStatus(cbStatus.getSelectedItem().toString());
+            emp.setPassword(txtPass.getText().trim());
+
             if (bus.updateEmployee(emp)) {
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
                 loadData();
@@ -263,7 +289,7 @@ public class EmployeePanel extends JPanel {
         txtUser.setEditable(true);
 
         txtPass.setText("");
-        txtPass.setEditable(true); // Mở lại để nhập cho nhân viên mới
+        txtPass.setEditable(true);
 
         txtName.setText("");
         txtPhone.setText("");
