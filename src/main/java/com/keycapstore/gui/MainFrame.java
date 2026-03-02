@@ -15,8 +15,8 @@ public class MainFrame extends JFrame {
     private CardLayout cardLayout;
     private JPanel sidebarPanel;
 
-    private MenuButton btnDashboard, btnProduct, btnEmployee, btnCustomer, btnSales, btnLogout, btnRefresh, btnHistory,
-            btnStockHistory, btnVoucher, btnShipping; // Thêm btnShipping
+    private MenuButton btnDashboard, btnMuaHang, btnProduct, btnEmployee, btnCustomer, btnSales, btnLogout, btnRefresh, btnHistory,
+            btnStockHistory, btnVoucher, btnShipping;
 
     public MainFrame(Object user) {
         this.currentUser = user;
@@ -56,10 +56,11 @@ public class MainFrame extends JFrame {
         sidebarPanel.add(lblBrand);
 
         btnDashboard = createMenuBtn("Dashboard", "dashboard.png");
+        btnMuaHang = createMenuBtn("Mua Hàng", "cart.png"); // Nút Mua Hàng mới
         btnProduct = createMenuBtn("Kho Hàng", "warehouse.png");
         btnSales = createMenuBtn("Bán Hàng", "sales.png");
         btnStockHistory = createMenuBtn("Lịch Sử Nhập", "invoice2.png");
-        btnShipping = createMenuBtn("Vận Đơn", "shipping.png"); // Icon mới
+        btnShipping = createMenuBtn("Vận Đơn", "shipping.png");
         btnCustomer = createMenuBtn("Khách Hàng", "customer.png");
         btnHistory = createMenuBtn("Lịch Sử Đơn", "invoice.png");
         btnVoucher = createMenuBtn("Voucher", "ticket.png");
@@ -71,8 +72,11 @@ public class MainFrame extends JFrame {
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(ThemeColor.BG_LIGHT);
 
+        // Thêm các panel
+        contentPanel.add(new DashboardPanel(this::navigateTo), "DASHBOARD");
+        contentPanel.add(new MuaHangPanel(currentUser), "MUAHANG"); // Panel Mua Hàng mới
+        
         if (currentUser instanceof Employee) {
-            contentPanel.add(new DashboardPanel(this::navigateTo), "DASHBOARD");
             contentPanel.add(new ProductPanel((Employee) currentUser), "PRODUCT");
             contentPanel.add(new SalesPanel((Employee) currentUser), "SALES");
         } else {
@@ -80,7 +84,7 @@ public class MainFrame extends JFrame {
             contentPanel.add(new JPanel(), "PRODUCT");
         }
         contentPanel.add(new OrderHistoryPanel(), "HISTORY");
-        contentPanel.add(new ShippingPanel(), "SHIPPING"); // Thêm Panel mới
+        contentPanel.add(new ShippingPanel(), "SHIPPING");
         contentPanel.add(new CustomerPanel(), "CUSTOMER");
         contentPanel.add(new VoucherPanel(), "VOUCHER");
 
@@ -93,15 +97,20 @@ public class MainFrame extends JFrame {
             }
         }
 
+        contentPanel.add(new StockEntryHistoryPanel(), "STOCK_HISTORY");
+
+        // Thêm các nút vào sidebar
+        sidebarPanel.add(btnDashboard);
+        sidebarPanel.add(btnMuaHang); // Thêm nút Mua Hàng
+        
         if (currentUser instanceof Employee) {
             Employee emp = (Employee) currentUser;
             String role = emp.getRole();
 
             if ("super_admin".equals(role)) {
-                sidebarPanel.add(btnDashboard);
                 sidebarPanel.add(btnEmployee);
                 sidebarPanel.add(btnCustomer);
-                sidebarPanel.add(btnVoucher); // Chỉ Super Admin mới thấy
+                sidebarPanel.add(btnVoucher);
             }
 
             if ("super_admin".equals(role) || "warehouse_manager".equals(role)) {
@@ -111,10 +120,8 @@ public class MainFrame extends JFrame {
 
             if ("super_admin".equals(role) || "sales_manager".equals(role)) {
                 sidebarPanel.add(btnSales);
-                sidebarPanel.add(btnShipping); // Sales Manager được thấy Vận Đơn
+                sidebarPanel.add(btnShipping);
             }
-        } else {
-            sidebarPanel.add(btnDashboard);
         }
 
         sidebarPanel.add(btnHistory);
@@ -122,51 +129,40 @@ public class MainFrame extends JFrame {
         sidebarPanel.add(Box.createVerticalGlue());
         sidebarPanel.add(btnLogout);
 
+        // Hiển thị dashboard mặc định
         cardLayout.show(contentPanel, "DASHBOARD");
         updateActiveButton(btnDashboard);
 
-        if (isSuperAdmin) {
-            cardLayout.show(contentPanel, "EMPLOYEE");
-            updateActiveButton(btnEmployee);
-        }
-
+        // Thêm action listeners
         btnDashboard.addActionListener(e -> navigateTo("DASHBOARD"));
-
+        btnMuaHang.addActionListener(e -> navigateTo("MUAHANG")); // Action cho nút Mua Hàng
         btnProduct.addActionListener(e -> navigateTo("PRODUCT"));
-
         btnSales.addActionListener(e -> navigateTo("SALES"));
-
         btnShipping.addActionListener(e -> navigateTo("SHIPPING"));
-
         btnCustomer.addActionListener(e -> navigateTo("CUSTOMER"));
-
         btnEmployee.addActionListener(e -> navigateTo("EMPLOYEE"));
-
         btnStockHistory.addActionListener(e -> navigateTo("STOCK_HISTORY"));
-
         btnHistory.addActionListener(e -> navigateTo("HISTORY"));
-
         btnVoucher.addActionListener(e -> navigateTo("VOUCHER"));
-
         btnRefresh.addActionListener(e -> refreshCurrentPage());
-
         btnLogout.addActionListener(e -> logout());
 
         add(sidebarPanel, BorderLayout.WEST);
         add(contentPanel, BorderLayout.CENTER);
 
         setupRefreshShortcut();
-        contentPanel.add(new StockEntryHistoryPanel(), "STOCK_HISTORY");
     }
 
-    // Hàm điều hướng chung, được gọi từ Dashboard hoặc các nơi khác
     public void navigateTo(String cardName) {
         cardLayout.show(contentPanel, cardName);
 
-        // Cập nhật trạng thái nút Menu tương ứng
+        // Cập nhật trạng thái nút
         switch (cardName) {
             case "DASHBOARD":
                 updateActiveButton(btnDashboard);
+                break;
+            case "MUAHANG":
+                updateActiveButton(btnMuaHang);
                 break;
             case "PRODUCT":
                 updateActiveButton(btnProduct);
@@ -194,20 +190,19 @@ public class MainFrame extends JFrame {
                 break;
         }
 
-        // Refresh dữ liệu của trang đích nếu cần
+        // Refresh dữ liệu nếu cần
         for (Component comp : contentPanel.getComponents()) {
-            if (comp.isVisible() && comp instanceof Refreshable)
+            if (comp.isVisible() && comp instanceof Refreshable) {
                 ((Refreshable) comp).refresh();
+            }
         }
     }
 
     private void refreshCurrentPage() {
-
         for (Component comp : contentPanel.getComponents()) {
             if (comp.isVisible()) {
                 if (comp instanceof Refreshable) {
                     ((Refreshable) comp).refresh();
-
                     Toast("Đã làm mới dữ liệu!");
                 }
                 break;
@@ -234,22 +229,19 @@ public class MainFrame extends JFrame {
     }
 
     private void updateActiveButton(MenuButton activeBtn) {
-
         btnDashboard.setSelected(false);
+        btnMuaHang.setSelected(false);
         btnProduct.setSelected(false);
         btnSales.setSelected(false);
         btnShipping.setSelected(false);
         btnStockHistory.setSelected(false);
         btnHistory.setSelected(false);
-        if (btnCustomer != null)
-            btnCustomer.setSelected(false);
-        if (btnEmployee != null)
-            btnEmployee.setSelected(false);
+        if (btnCustomer != null) btnCustomer.setSelected(false);
+        if (btnEmployee != null) btnEmployee.setSelected(false);
         btnVoucher.setSelected(false);
         btnRefresh.setSelected(false);
 
-        if (activeBtn != null)
-            activeBtn.setSelected(true);
+        if (activeBtn != null) activeBtn.setSelected(true);
     }
 
     private void logout() {
@@ -258,7 +250,6 @@ public class MainFrame extends JFrame {
     }
 
     private void Toast(String msg) {
-
         System.out.println("Toast: " + msg);
     }
 }
