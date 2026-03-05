@@ -20,7 +20,8 @@ public class ConnectDB {
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
-            String url = String.format("jdbc:sqlserver://%s:%s;databaseName=%s;encrypt=%s;trustServerCertificate=%s;",
+            String url = String.format(
+                    "jdbc:sqlserver://%s:%s;databaseName=%s;encrypt=%s;trustServerCertificate=%s;sendStringParametersAsUnicode=true;",
                     SERVER_NAME, PORT, DB_NAME, ENCRYPT, TRUST_CERT);
 
             conn = DriverManager.getConnection(url, USER, PASSWORD);

@@ -1,46 +1,51 @@
 package com.keycapstore.model;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class Product {
-    private int productId;
-    private int categoryId;
-    private int makerId;
+
+    private int id;
     private String name;
+    private double price;
+    private int stock;
+    private String image;
+    private String status;
+
+    private int categoryId;
+    private String categoryName;
+    private String origin;
+    private int makerId;
     private String description;
-    private BigDecimal price;
-    private int stockQuantity;
     private String profile;
     private String material;
-    private boolean isActive;
     private LocalDateTime createdAt;
 
     public Product() {
     }
 
+    public Product(int id, String name, double price, int stock, String image, String status) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.stock = stock;
+        this.image = image;
+        this.status = status;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public int getProductId() {
-        return productId;
+        return id;
     }
 
     public void setProductId(int productId) {
-        this.productId = productId;
-    }
-
-    public int getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(int categoryId) {
-        this.categoryId = categoryId;
-    }
-
-    public int getMakerId() {
-        return makerId;
-    }
-
-    public void setMakerId(int makerId) {
-        this.makerId = makerId;
+        this.id = productId;
     }
 
     public String getName() {
@@ -51,28 +56,93 @@ public class Product {
         this.name = name;
     }
 
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public void setStock(int stock) {
+        this.stock = stock;
+    }
+
+    // Alias cho code cũ (stockQuantity -> stock)
+    public int getStockQuantity() {
+        return stock;
+    }
+
+    public void setStockQuantity(int stockQuantity) {
+        this.stock = stockQuantity;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public boolean isActive() {
+        return "Active".equalsIgnoreCase(status);
+    }
+
+    public void setActive(boolean active) {
+        this.status = active ? "Active" : "Inactive";
+    }
+
+    public int getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(int categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public int getMakerId() {
+        return makerId;
+    }
+
+    public void setMakerId(int makerId) {
+        this.makerId = makerId;
+    }
+
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public int getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(int stockQuantity) {
-        this.stockQuantity = stockQuantity;
     }
 
     public String getProfile() {
@@ -89,14 +159,6 @@ public class Product {
 
     public void setMaterial(String material) {
         this.material = material;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
     }
 
     public LocalDateTime getCreatedAt() {

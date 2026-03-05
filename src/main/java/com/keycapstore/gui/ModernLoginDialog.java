@@ -538,6 +538,12 @@ public class ModernLoginDialog extends JFrame {
         Employee emp = employeeBUS.login(u, p);
         if (emp != null) {
 
+            if ("banned".equalsIgnoreCase(emp.getStatus()) || "quit".equalsIgnoreCase(emp.getStatus())) {
+                JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             String currentPin = emp.getPinCode();
             if (currentPin == null || currentPin.trim().isEmpty()) {
 
@@ -556,6 +562,11 @@ public class ModernLoginDialog extends JFrame {
 
         Customer cus = customerBUS.login(u, p);
         if (cus != null) {
+            if ("banned".equalsIgnoreCase(cus.getStatus().trim())) {
+                JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             openMainFrame(cus);
             this.dispose();
             return;
@@ -594,10 +605,23 @@ public class ModernLoginDialog extends JFrame {
         Customer newCus = new Customer(u, p, n, e, ph, addr);
         if (customerBUS.register(newCus)) {
             JOptionPane.showMessageDialog(this, "Registration Successful! Please Login.");
+            clearRegisterForm();
             cardLayout.show(cardsPanel, "LOGIN");
         } else {
             JOptionPane.showMessageDialog(this, "Registration Failed!", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Registration Failed! Email or Phone number might already be in use.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void clearRegisterForm() {
+        txtRegUser.setText("");
+        txtRegPass.setText("");
+        txtRegConfirmPass.setText("");
+        txtRegFullName.setText("");
+        txtRegEmail.setText("");
+        txtRegPhone.setText("");
+        txtRegAddress.setText("");
     }
 
     private void handleSendOTP() {
