@@ -7,11 +7,20 @@ public class OrderItem {
     private int quantity;
     private double unitPrice;
     private double subtotal;
+    private String productName;
 
     public OrderItem() {}
 
     public OrderItem(int productId, int quantity, double unitPrice) {
         this.productId = productId;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.subtotal = quantity * unitPrice;
+    }
+
+    public OrderItem(int productId, String productName, int quantity, double unitPrice) {
+        this.productId = productId;
+        this.productName = productName;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
         this.subtotal = quantity * unitPrice;
@@ -74,5 +83,31 @@ public class OrderItem {
 
     public void setSubtotal(double subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+
+    /**
+     * Returns the unit price of this order item.
+     * Alias for getUnitPrice() for compatibility.
+     * @return the unit price
+     */
+    public double getPrice() {
+        return unitPrice;
+    }
+
+    /**
+     * Returns the total amount for this item (subtotal).
+     * Calculated as quantity * unitPrice.
+     * @return the subtotal amount
+     */
+    public double getTotal() {
+        return subtotal;
     }
 }
