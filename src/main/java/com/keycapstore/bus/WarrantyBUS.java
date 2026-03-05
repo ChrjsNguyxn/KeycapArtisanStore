@@ -3,14 +3,9 @@ package com.keycapstore.bus;
 import com.keycapstore.dao.WarrantyDAO;
 import com.keycapstore.model.Warranty;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 
-/**
- * WarrantyBUS - Business Logic cho Bảo hành
- *
- * Workflow: pending → approved → in_progress → completed
- *                             ↘ rejected
- */
 public class WarrantyBUS {
 
     private static final int WARRANTY_MONTHS = 12;
@@ -39,6 +34,14 @@ public class WarrantyBUS {
             return BUSResult.fail("Mã khách hàng không hợp lệ.");
         if (issue == null || issue.trim().length() < 10)
             return BUSResult.fail("Mô tả vấn đề cần ít nhất 10 ký tự.");
+
+        // ── Kiểm tra thời hạn bảo hành 12 tháng ──────────────────────
+        LocalDateTime orderDate = getOrderDateByItemId(orderItemId);
+        if (orderDate == null)
+            return BUSResult.fail("Không tìm thấy đơn hàng tương ứng với mã chi tiết #" + orderItemId + ".");
+        if (!isWithinWarrantyPeriod(orderDate))
+            return BUSResult.fail("Sản phẩm đã hết hạn bảo hành (12 tháng kể từ ngày đặt hàng).");
+        // ─────────────────────────────────────────────────────────────────────
 
         Warranty warranty = new Warranty(orderItemId, customerId, issue.trim());
         boolean created = warrantyDAO.insert(warranty);
@@ -88,7 +91,7 @@ public class WarrantyBUS {
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
 
-    // ── 4. XỬ LÝ HOÀN TIỀN / ĐỔI HÀNG (approved → in_progress)
+    // ── 4. XỬ LÝ HOÀN TIỀN / ĐỔI HÀNG (approved → in_progress) ─────────────
 
     public BUSResult processReturn(int warrantyId, int employeeId, String returnType, String note) {
         if (!RETURN_REFUND.equals(returnType) && !RETURN_EXCHANGE.equals(returnType))
@@ -133,7 +136,26 @@ public class WarrantyBUS {
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
 
-    // ── HELPER ───────────────────────────────────────────────
+    // ── HELPER: Lấy ngày đặt hàng từ order_item_id ───────────────────────────
+
+
+    private LocalDateTime getOrderDateByItemId(int orderItemId) {
+        String sql = "SELECT o.order_date FROM order_items oi "
+                   + "JOIN orders o ON oi.order_id = o.order_id "
+                   + "WHERE oi.order_item_id = ?";
+        try (Connection con = com.keycapstore.config.ConnectDB.getConnection();
+             PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, orderItemId);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                Timestamp ts = rs.getTimestamp("order_date");
+                return ts != null ? ts.toLocalDateTime() : null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
     private boolean isWithinWarrantyPeriod(LocalDateTime orderDate) {
         if (orderDate == null) return false;

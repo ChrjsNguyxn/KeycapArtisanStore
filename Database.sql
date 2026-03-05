@@ -194,7 +194,7 @@ CREATE TABLE warranties (
   customer_id INT NOT NULL,
   employee_id INT,
   reason NVARCHAR(MAX) NOT NULL,
-  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending','approved','in_progress','rejected','completed')),
   request_date DATETIME DEFAULT GETDATE(),
   response_note NVARCHAR(MAX),
   FOREIGN KEY (order_item_id) REFERENCES order_items (order_item_id),
