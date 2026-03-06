@@ -2,7 +2,7 @@ package com.keycapstore.dao;
 
 import com.keycapstore.model.ImportOrderDTO;
 import com.keycapstore.model.ImportOrderItemDTO;
-import com.mycompany.mavenproject2.DBConnection;
+import com.keycapstore.config.ConnectDB;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -13,26 +13,25 @@ public class ImportOrderDAO {
     // ================= INSERT =================
     public boolean insertImportOrder(ImportOrderDTO order, List<ImportOrderItemDTO> items) {
 
-        String insertOrderSQL =
-                "INSERT INTO import_orders (supplier_id, employee_id, total_cost, note) VALUES (?, ?, ?, ?)";
+        String insertOrderSQL = "INSERT INTO import_orders (supplier_id, employee_id, total_cost, note) VALUES (?, ?, ?, ?)";
 
-        String insertItemSQL =
-                "INSERT INTO import_order_items (import_id, product_id, quantity, import_price) VALUES (?, ?, ?, ?)";
+        String insertItemSQL = "INSERT INTO import_order_items (import_id, product_id, quantity, import_price) VALUES (?, ?, ?, ?)";
 
-        String updateStockSQL =
-                "UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?";
+        String updateStockSQL = "UPDATE Product SET stock = stock + ? WHERE product_id = ?";
+
+        // SQL để ghi vào lịch sử nhập kho (StockEntryHistoryPanel mới thấy được)
+        String insertHistorySQL = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, note) VALUES (?, ?, ?, ?, ?)";
 
         Connection conn = null;
 
         try {
-            conn = DBConnection.getConnection();
+            conn = ConnectDB.getConnection();
             conn.setAutoCommit(false);
 
             int importId;
 
             // Insert Order
-            try (PreparedStatement psOrder =
-                         conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS)) {
+            try (PreparedStatement psOrder = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS)) {
 
                 psOrder.setInt(1, order.getSupplierId());
                 psOrder.setInt(2, order.getEmployeeId());
@@ -70,6 +69,16 @@ public class ImportOrderDAO {
 
                     psStock.executeUpdate();
                 }
+
+                // Insert Stock History (Để hiện bên tab Lịch sử nhập)
+                try (PreparedStatement psHist = conn.prepareStatement(insertHistorySQL)) {
+                    psHist.setInt(1, item.getProductId());
+                    psHist.setInt(2, order.getEmployeeId());
+                    psHist.setInt(3, item.getQuantity());
+                    psHist.setDouble(4, item.getImportPrice());
+                    psHist.setString(5, "Nhập hàng từ đơn #" + importId + ": " + order.getNote());
+                    psHist.executeUpdate();
+                }
             }
 
             conn.commit();
@@ -78,7 +87,8 @@ public class ImportOrderDAO {
         } catch (Exception e) {
 
             try {
-                if (conn != null) conn.rollback();
+                if (conn != null)
+                    conn.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
@@ -88,7 +98,8 @@ public class ImportOrderDAO {
 
         } finally {
             try {
-                if (conn != null) conn.close();
+                if (conn != null)
+                    conn.close();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -98,22 +109,18 @@ public class ImportOrderDAO {
     // ================= DELETE =================
     public boolean deleteImportOrder(int importId) {
 
-        String getItemsSQL =
-                "SELECT product_id, quantity FROM import_order_items WHERE import_id = ?";
+        String getItemsSQL = "SELECT product_id, quantity FROM import_order_items WHERE import_id = ?";
 
-        String deleteItemsSQL =
-                "DELETE FROM import_order_items WHERE import_id = ?";
+        String deleteItemsSQL = "DELETE FROM import_order_items WHERE import_id = ?";
 
-        String deleteOrderSQL =
-                "DELETE FROM import_orders WHERE import_id = ?";
+        String deleteOrderSQL = "DELETE FROM import_orders WHERE import_id = ?";
 
-        String rollbackStockSQL =
-                "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?";
+        String rollbackStockSQL = "UPDATE Product SET stock = stock - ? WHERE product_id = ?";
 
         Connection conn = null;
 
         try {
-            conn = DBConnection.getConnection();
+            conn = ConnectDB.getConnection();
             conn.setAutoCommit(false);
 
             // Lấy danh sách item để rollback stock
@@ -158,7 +165,8 @@ public class ImportOrderDAO {
         } catch (Exception e) {
 
             try {
-                if (conn != null) conn.rollback();
+                if (conn != null)
+                    conn.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
@@ -168,7 +176,8 @@ public class ImportOrderDAO {
 
         } finally {
             try {
-                if (conn != null) conn.close();
+                if (conn != null)
+                    conn.close();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -182,9 +191,9 @@ public class ImportOrderDAO {
 
         String sql = "SELECT * FROM import_orders ORDER BY import_id DESC";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
 

@@ -1,7 +1,7 @@
 package com.keycapstore.dao;
 
 import com.keycapstore.model.MakerDTO;
-import com.mycompany.mavenproject2.DBConnection;
+import com.keycapstore.config.ConnectDB;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -13,17 +13,16 @@ public class MakerDAO {
         List<MakerDTO> list = new ArrayList<>();
         String sql = "SELECT * FROM makers";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 list.add(new MakerDTO(
                         rs.getInt("maker_id"),
                         rs.getString("name"),
                         rs.getString("origin"),
-                        rs.getString("website")
-                ));
+                        rs.getString("website")));
             }
 
         } catch (Exception e) {

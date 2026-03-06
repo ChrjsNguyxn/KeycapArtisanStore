@@ -2,10 +2,14 @@ package com.keycapstore.gui;
 
 import com.keycapstore.bus.CategoryBUS;
 import com.keycapstore.bus.ProductBUS;
+import com.keycapstore.dao.SupplierDAO;
 import com.keycapstore.model.Category;
 import com.keycapstore.model.Employee;
 import com.keycapstore.model.Product;
+import com.keycapstore.model.SupplierDTO;
 import com.keycapstore.utils.ThemeColor;
+import com.keycapstore.utils.ImageHelper; // Import Helper
+import com.keycapstore.gui.components.MultiImageInput; // Import Component
 import java.awt.*;
 import java.awt.event.*;
 import java.text.DecimalFormat;
@@ -13,22 +17,28 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 import javax.swing.*;
+import java.awt.image.BufferedImage; // Import thêm
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.DefaultTableCellRenderer;
 
 public class ProductPanel extends JPanel implements Refreshable {
 
     private Employee currentUser;
     private JTable table;
     private DefaultTableModel model;
-    private JTextField txtName, txtPrice, txtStock, txtImage, txtOrigin, txtEntryPrice;
+    private JTextField txtName, txtPrice, txtStock, txtOrigin, txtEntryPrice;
+    private MultiImageInput pnlImages; // Thay thế txtImage
     private JComboBox<Category> cbCategory;
+    private JTextField txtSupplier; // Sửa: Dùng TextField thay vì ComboBox
+    private JCheckBox chkPublic; // Thêm: Checkbox hiển thị
     private JButton btnAdd, btnUpdate, btnDelete, btnClear;
     private JTextField txtSearch;
     private JComboBox<String> cbSort;
     private ProductBUS bus;
     private CategoryBUS catBus;
+    private SupplierDAO supplierDAO; // Thêm DAO
     private int selectedId = -1;
     private DecimalFormat df = new DecimalFormat("#,###");
     private ArrayList<Product> allProducts;
@@ -37,15 +47,8 @@ public class ProductPanel extends JPanel implements Refreshable {
         this.currentUser = currentUser;
         bus = new ProductBUS();
         catBus = new CategoryBUS();
+        supplierDAO = new SupplierDAO();
         allProducts = new ArrayList<>();
-
-        MouseAdapter outsideClick = new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                clearForm();
-            }
-        };
-        this.addMouseListener(outsideClick);
 
         setLayout(new BorderLayout(10, 10));
         setBackground(ThemeColor.BG_LIGHT);
@@ -53,7 +56,6 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         JPanel topPanel = new JPanel(new BorderLayout(10, 10));
         topPanel.setOpaque(false);
-        topPanel.addMouseListener(outsideClick);
 
         JLabel lblTitle = new JLabel("QUẢN LÝ KHO KEYCAP");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
@@ -64,7 +66,6 @@ public class ProductPanel extends JPanel implements Refreshable {
         // --- BỘ LỌC VÀ TÌM KIẾM ---
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         filterPanel.setOpaque(false);
-        filterPanel.addMouseListener(outsideClick);
 
         filterPanel.add(createLabel("Tìm kiếm:"));
         txtSearch = new JTextField(20);
@@ -86,7 +87,6 @@ public class ProductPanel extends JPanel implements Refreshable {
         formPanel.setBackground(Color.WHITE);
 
         formPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        formPanel.addMouseListener(outsideClick);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
@@ -104,11 +104,30 @@ public class ProductPanel extends JPanel implements Refreshable {
         cbCategory.setPreferredSize(new Dimension(280, 30));
         formPanel.add(cbCategory, gbc);
 
+        gbc.gridy++;
+        formPanel.add(createLabel("Nhà cung cấp:"), gbc);
+        gbc.gridy++;
+        txtSupplier = new JTextField(); // Nhập tay
+        txtSupplier.setPreferredSize(new Dimension(280, 30));
+        formPanel.add(txtSupplier, gbc);
+
         addInput(formPanel, gbc, "Giá bán (VNĐ):", txtPrice = new JTextField());
         addInput(formPanel, gbc, "Giá nhập (VNĐ):", txtEntryPrice = new JTextField());
         addInput(formPanel, gbc, "Xuất xứ:", txtOrigin = new JTextField());
         addInput(formPanel, gbc, "Số lượng tồn kho:", txtStock = new JTextField());
-        addInput(formPanel, gbc, "Tên file ảnh (VD: gmk.png):", txtImage = new JTextField());
+
+        gbc.gridy++;
+        formPanel.add(createLabel("Hình ảnh:"), gbc);
+        gbc.gridy++;
+        pnlImages = new MultiImageInput();
+        pnlImages.setPreferredSize(new Dimension(280, 340)); // Tăng chiều cao cho panel ảnh
+        formPanel.add(pnlImages, gbc);
+
+        gbc.gridy++;
+        chkPublic = new JCheckBox("Hiển thị trên trang mua hàng");
+        chkPublic.setBackground(Color.WHITE);
+        chkPublic.setSelected(true); // Mặc định là hiển thị
+        formPanel.add(chkPublic, gbc);
 
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         btnPanel.setOpaque(false);
@@ -135,17 +154,27 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         add(scrollPane, BorderLayout.EAST);
 
-        String[] headers = { "ID", "Tên Sản Phẩm", "Danh Mục", "Giá Bán", "Tồn Kho", "Xuất xứ", "Hình Ảnh" };
+        // Thêm cột Nhà Cung Cấp
+        String[] headers = { "Hình Ảnh", "ID", "Tên Sản Phẩm", "Danh Mục", "Giá Bán", "Tồn Kho", "Xuất Xứ",
+                "Nhà Cung Cấp",
+                "Trạng Thái" }; // Đảo cột Hình Ảnh lên đầu
         model = new DefaultTableModel(headers, 0);
 
         table = new JTable(model) {
+            // FIX: Không cho phép sửa trực tiếp trên ô (tránh click vào ảnh bị hiện đường
+            // dẫn)
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+
             @Override
             public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
                 Component c = super.prepareRenderer(renderer, row, column);
                 if (!isRowSelected(row)) {
                     try {
                         int modelRow = convertRowIndexToModel(row);
-                        Object stockObj = getModel().getValueAt(modelRow, 4);
+                        Object stockObj = getModel().getValueAt(modelRow, 4); // Cột Tồn Kho
 
                         int stock = 0;
                         if (stockObj instanceof Number) {
@@ -165,8 +194,30 @@ public class ProductPanel extends JPanel implements Refreshable {
                 }
                 return c;
             }
+
+            // Override để hiển thị ảnh
+            @Override
+            public Class<?> getColumnClass(int column) {
+                if (column == 0)
+                    return ImageIcon.class; // Cột 0 là ảnh
+                return Object.class;
+            }
         };
-        table.setRowHeight(30);
+
+        // FIX: Thêm Renderer riêng cho cột ảnh để đảm bảo hiển thị
+        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row,
+                        column);
+                label.setIcon((value instanceof ImageIcon) ? (ImageIcon) value : null);
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+                return label;
+            }
+        });
+
+        table.setRowHeight(60); // Tăng chiều cao dòng để hiện ảnh
         table.getTableHeader().setBackground(ThemeColor.PRIMARY);
         table.getTableHeader().setForeground(Color.WHITE);
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -175,17 +226,13 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         table.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                if (table.rowAtPoint(e.getPoint()) == -1) {
-                    clearForm();
-                    return;
-                }
                 int row = table.getSelectedRow();
                 if (row >= 0) {
                     try {
-                        selectedId = Integer.parseInt(model.getValueAt(row, 0).toString());
-                        txtName.setText(model.getValueAt(row, 1).toString());
+                        selectedId = Integer.parseInt(model.getValueAt(row, 1).toString()); // ID ở cột 1
+                        txtName.setText(model.getValueAt(row, 2).toString());
 
-                        String catName = model.getValueAt(row, 2) != null ? model.getValueAt(row, 2).toString() : "";
+                        String catName = model.getValueAt(row, 3) != null ? model.getValueAt(row, 3).toString() : "";
                         for (int i = 0; i < cbCategory.getItemCount(); i++) {
                             if (cbCategory.getItemAt(i).getName().equals(catName)) {
                                 cbCategory.setSelectedIndex(i);
@@ -193,13 +240,42 @@ public class ProductPanel extends JPanel implements Refreshable {
                             }
                         }
 
-                        String rawPrice = model.getValueAt(row, 3).toString().replace(",", "").replace(".", "")
-                                .replace(" ₫", "").trim();
+                        // Load Supplier lên ComboBox
+                        Object supObj = model.getValueAt(row, 7);
+                        txtSupplier.setText(supObj != null ? supObj.toString() : "");
+
+                        // Load Status
+                        Object statusObj = model.getValueAt(row, 8);
+                        String status = statusObj != null ? statusObj.toString() : "";
+                        chkPublic.setSelected("Công khai".equals(status));
+
+                        Object priceObj = model.getValueAt(row, 4);
+                        String rawPrice = priceObj != null
+                                ? priceObj.toString().replace(",", "").replace(".", "").replace(" ₫", "").trim()
+                                : "0";
                         txtPrice.setText(rawPrice);
-                        txtEntryPrice.setText("0");
-                        txtStock.setText(model.getValueAt(row, 4).toString());
-                        txtOrigin.setText(model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : "");
-                        txtImage.setText(model.getValueAt(row, 6).toString());
+
+                        // Sửa: Lấy giá nhập gần nhất từ BUS
+                        double latestEntryPrice = bus.getLatestEntryPrice(selectedId);
+                        txtEntryPrice.setText(df.format(latestEntryPrice));
+
+                        Object stockObj = model.getValueAt(row, 5);
+                        txtStock.setText(stockObj != null ? stockObj.toString() : "0");
+                        Object originObj = model.getValueAt(row, 6);
+                        txtOrigin.setText(originObj != null ? originObj.toString() : "");
+
+                        // FIX: Load toàn bộ ảnh từ database (bảng product_images)
+                        java.util.List<String> imgs = bus.getProductImages(selectedId);
+
+                        // Fallback: Nếu chưa có trong bảng phụ, lấy ảnh đại diện từ bảng chính
+                        Product p = allProducts.stream().filter(prod -> prod.getId() == selectedId).findFirst()
+                                .orElse(null);
+
+                        if (imgs.isEmpty() && p != null && p.getImage() != null && !p.getImage().isEmpty()) {
+                            imgs.add(p.getImage());
+                        }
+
+                        pnlImages.setImages(imgs);
 
                         btnAdd.setEnabled(false);
                     } catch (Exception ex) {
@@ -312,9 +388,28 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         model.setRowCount(0);
         for (Product p : filtered) {
+            // Load thumbnail
+            ImageIcon thumb = ImageHelper.loadResizedIcon(p.getImage(), 60, 60);
+
+            // FIX: Nếu ảnh null (không tìm thấy file), tạo ảnh placeholder để không bị
+            // trắng cột
+            if (thumb == null) {
+                BufferedImage img = new BufferedImage(60, 60, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2 = img.createGraphics();
+                g2.setColor(new Color(240, 240, 240));
+                g2.fillRect(0, 0, 60, 60);
+                g2.setColor(Color.GRAY);
+                g2.drawString("No Img", 10, 35);
+                g2.dispose();
+                thumb = new ImageIcon(img);
+            }
+
             model.addRow(new Object[] {
+                    thumb, // Cột 0 là ảnh
                     p.getId(), p.getName(), p.getCategoryName(), df.format(p.getPrice()), p.getStock(),
-                    p.getOrigin(), p.getImage()
+                    p.getOrigin(),
+                    p.getSupplierName(),
+                    p.isActive() ? "Công khai" : "Ẩn"
             });
         }
     }
@@ -345,20 +440,40 @@ public class ProductPanel extends JPanel implements Refreshable {
                 if (confirm == JOptionPane.YES_OPTION) {
                     Product p = new Product();
                     p.setName(txtName.getText().trim());
-                    p.setPrice(Double.parseDouble(txtPrice.getText().trim()));
-                    p.setStock(Integer.parseInt(txtStock.getText().trim()));
-                    p.setImage(txtImage.getText().trim());
+                    // FIX: Xóa dấu phẩy ngăn cách hàng nghìn trước khi parse
+                    p.setPrice(Double.parseDouble(txtPrice.getText().trim().replace(",", "")));
+                    p.setStock(Integer.parseInt(txtStock.getText().trim().replace(",", "")));
+                    p.setImage(pnlImages.getCoverImage()); // Lấy ảnh từ Panel
                     p.setOrigin(txtOrigin.getText().trim());
+                    p.setStatus(chkPublic.isSelected() ? "Active" : "Hidden"); // Set trạng thái
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
                         p.setCategoryId(c.getCategoryId());
                     }
 
-                    double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim());
+                    // Xử lý Nhà cung cấp nhập tay
+                    String supName = txtSupplier.getText().trim();
+                    if (!supName.isEmpty()) {
+                        SupplierDTO s = supplierDAO.findByName(supName);
+                        if (s == null) {
+                            s = new SupplierDTO();
+                            s.setName(supName);
+                            supplierDAO.insert(s);
+                            s = supplierDAO.findByName(supName);
+                        }
+                        if (s != null)
+                            p.setSupplierId(s.getSupplierId());
+                    }
+
+                    // FIX: Xóa dấu phẩy cho giá nhập
+                    double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim().replace(",", ""));
 
                     String note = "Nhập mới";
-                    if (bus.addProduct(p, currentUser.getEmployeeId(), entryPrice, note)) {
+                    int newProductId = bus.addProduct(p, currentUser.getEmployeeId(), entryPrice, note);
+                    if (newProductId > 0) {
+                        // Lưu danh sách ảnh
+                        bus.saveProductImages(newProductId, pnlImages.getAllImages());
                         JOptionPane.showMessageDialog(this, "Nhập kho thành công!");
                         loadData();
                         clearForm();
@@ -383,7 +498,8 @@ public class ProductPanel extends JPanel implements Refreshable {
                     return;
                 }
 
-                int newStock = Integer.parseInt(txtStock.getText().trim());
+                // FIX: Xóa dấu phẩy trước khi parse số lượng
+                int newStock = Integer.parseInt(txtStock.getText().trim().replace(",", ""));
                 int oldStock = 0;
                 for (Product p : allProducts) {
                     if (p.getId() == selectedId) {
@@ -413,18 +529,45 @@ public class ProductPanel extends JPanel implements Refreshable {
                     Product p = new Product();
                     p.setId(selectedId);
                     p.setName(txtName.getText().trim());
-                    p.setPrice(Double.parseDouble(txtPrice.getText().trim()));
+                    // FIX: Xóa dấu phẩy trước khi parse giá bán
+                    p.setPrice(Double.parseDouble(txtPrice.getText().trim().replace(",", "")));
                     p.setStock(newStock);
-                    p.setImage(txtImage.getText().trim());
+                    p.setImage(pnlImages.getCoverImage()); // Lấy ảnh từ Panel
                     p.setOrigin(txtOrigin.getText().trim());
+                    p.setStatus(chkPublic.isSelected() ? "Active" : "Hidden"); // Set trạng thái
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
                         p.setCategoryId(c.getCategoryId());
                     }
-                    double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim());
+
+                    // FIX: Bắt buộc phải có Nhà cung cấp khi cập nhật
+                    String supName = txtSupplier.getText().trim();
+                    if (supName.isEmpty()) {
+                        JOptionPane.showMessageDialog(this, "Nhà cung cấp không được để trống!", "Thiếu thông tin",
+                                JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    // Xử lý Nhà cung cấp nhập tay
+                    if (!supName.isEmpty()) {
+                        SupplierDTO s = supplierDAO.findByName(supName);
+                        if (s == null) {
+                            s = new SupplierDTO();
+                            s.setName(supName);
+                            supplierDAO.insert(s);
+                            s = supplierDAO.findByName(supName);
+                        }
+                        if (s != null)
+                            p.setSupplierId(s.getSupplierId());
+                    }
+
+                    // FIX: Xóa dấu phẩy trước khi parse giá nhập
+                    double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim().replace(",", ""));
 
                     if (bus.updateProduct(p, currentUser.getEmployeeId(), entryPrice, note)) {
+                        // Cập nhật danh sách ảnh
+                        bus.saveProductImages(p.getId(), pnlImages.getAllImages());
                         JOptionPane.showMessageDialog(this, "Cập nhật kho xong!");
                         loadData();
                         clearForm();
@@ -480,7 +623,9 @@ public class ProductPanel extends JPanel implements Refreshable {
         txtStock.setText("");
         txtOrigin.setText("");
         txtEntryPrice.setText("");
-        txtImage.setText("");
+        pnlImages.setImages(new ArrayList<>()); // Reset ảnh
+        txtSupplier.setText("");
+        chkPublic.setSelected(true);
         if (cbCategory.getItemCount() > 0)
             cbCategory.setSelectedIndex(0);
         selectedId = -1;

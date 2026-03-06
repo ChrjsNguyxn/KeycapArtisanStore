@@ -1,10 +1,11 @@
 package com.keycapstore.dao;
 
 import com.keycapstore.model.Employee;
-import com.mycompany.mavenproject2.dao.BaseDAO;
+import com.keycapstore.dao.BaseDAO;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+
 public class EmployeeDAO extends BaseDAO {
 
     // Kiem tra dang nhap
@@ -46,55 +47,57 @@ public class EmployeeDAO extends BaseDAO {
             return false;
         }
     }
+
     public List<Employee> getAll() {
 
-    List<Employee> list = new ArrayList<>();
-    String sql = "SELECT * FROM employees";
+        List<Employee> list = new ArrayList<>();
+        String sql = "SELECT * FROM employees";
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql);
-         ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
-        while (rs.next()) {
-            Employee emp = new Employee();
+            while (rs.next()) {
+                Employee emp = new Employee();
 
-            emp.setEmployeeId(rs.getInt("employee_id"));
-            emp.setUsername(rs.getString("username"));
-            emp.setPassword(rs.getString("password"));
-            emp.setFullName(rs.getString("full_name"));
-            emp.setEmail(rs.getString("email"));
-            emp.setPhone(rs.getString("phone"));
-            emp.setRole(rs.getString("role"));
-            emp.setStatus(rs.getString("status"));
-            emp.setPinCode(rs.getString("pin_code"));
+                emp.setEmployeeId(rs.getInt("employee_id"));
+                emp.setUsername(rs.getString("username"));
+                emp.setPassword(rs.getString("password"));
+                emp.setFullName(rs.getString("full_name"));
+                emp.setEmail(rs.getString("email"));
+                emp.setPhone(rs.getString("phone"));
+                emp.setRole(rs.getString("role"));
+                emp.setStatus(rs.getString("status"));
+                emp.setPinCode(rs.getString("pin_code"));
 
-            list.add(emp);
+                list.add(emp);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-    } catch (Exception e) {
-        e.printStackTrace();
+        return list;
     }
 
-    return list;
-}
-    public Employee getById(int id){
-    String sql = "SELECT * FROM employees WHERE employee_id = ?";
-    try(Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql)){
+    public Employee getById(int id) {
+        String sql = "SELECT * FROM employees WHERE employee_id = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.setInt(1,id);
-        ResultSet rs = ps.executeQuery();
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
 
-        if(rs.next()){
-            Employee e = new Employee();
-            e.setEmployeeId(rs.getInt("employee_id"));
-            e.setFullName(rs.getString("full_name"));
-            return e;
+            if (rs.next()) {
+                Employee e = new Employee();
+                e.setEmployeeId(rs.getInt("employee_id"));
+                e.setFullName(rs.getString("full_name"));
+                return e;
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-
-    }catch(Exception ex){
-        ex.printStackTrace();
+        return null;
     }
-    return null;
-}
 }

@@ -535,40 +535,48 @@ public class ModernLoginDialog extends JFrame {
             prefs.remove("password");
         }
 
-        Employee emp = employeeBUS.login(u, p);
-        if (emp != null) {
+        try {
+            Employee emp = employeeBUS.login(u, p);
+            if (emp != null) {
 
-            if ("banned".equalsIgnoreCase(emp.getStatus()) || "quit".equalsIgnoreCase(emp.getStatus())) {
-                JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
-                        JOptionPane.WARNING_MESSAGE);
+                if ("banned".equalsIgnoreCase(emp.getStatus()) || "quit".equalsIgnoreCase(emp.getStatus())) {
+                    JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                String currentPin = emp.getPinCode();
+                if (currentPin == null || currentPin.trim().isEmpty()) {
+
+                    openMainFrame(emp);
+                    this.dispose();
+                    return;
+                }
+
+                if (showPinDialog(emp)) {
+                    openMainFrame(emp);
+                    this.dispose();
+                }
+
                 return;
             }
 
-            String currentPin = emp.getPinCode();
-            if (currentPin == null || currentPin.trim().isEmpty()) {
-
-                openMainFrame(emp);
+            Customer cus = customerBUS.login(u, p);
+            if (cus != null) {
+                if ("banned".equalsIgnoreCase(cus.getStatus().trim())) {
+                    JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                openMainFrame(cus);
                 this.dispose();
                 return;
             }
-
-            if (showPinDialog(emp)) {
-                openMainFrame(emp);
-                this.dispose();
-            }
-
-            return;
-        }
-
-        Customer cus = customerBUS.login(u, p);
-        if (cus != null) {
-            if ("banned".equalsIgnoreCase(cus.getStatus().trim())) {
-                JOptionPane.showMessageDialog(this, "Tài khoản của bạn hiện tại đã bị khóa!", "Thông báo",
-                        JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            openMainFrame(cus);
-            this.dispose();
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Mất kết nối đến máy chủ cơ sở dữ liệu!\nVui lòng kiểm tra lại cấu hình mạng hoặc file ConnectDB.",
+                    "Lỗi Kết Nối", JOptionPane.ERROR_MESSAGE);
             return;
         }
 

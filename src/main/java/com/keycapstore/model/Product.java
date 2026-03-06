@@ -15,6 +15,8 @@ public class Product {
     private String categoryName;
     private String origin;
     private int makerId;
+    private int supplierId; // Mới
+    private String supplierName; // Mới
     private String description;
     private String profile;
     private String material;
@@ -135,6 +137,22 @@ public class Product {
 
     public void setMakerId(int makerId) {
         this.makerId = makerId;
+    }
+
+    public int getSupplierId() {
+        return supplierId;
+    }
+
+    public void setSupplierId(int supplierId) {
+        this.supplierId = supplierId;
+    }
+
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public void setSupplierName(String supplierName) {
+        this.supplierName = supplierName;
     }
 
     public String getDescription() {

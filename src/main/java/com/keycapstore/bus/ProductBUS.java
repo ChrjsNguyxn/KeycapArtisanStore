@@ -9,8 +9,39 @@ public class ProductBUS {
 
     public ArrayList<Product> getAllProducts() {
         ArrayList<Product> list = new ArrayList<>();
-        String sql = "SELECT p.*, c.name AS category_name, p.origin FROM Product p " +
+        String sql = "SELECT p.*, c.name AS category_name, s.name AS supplier_name FROM Product p " +
                 "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id " +
+                "WHERE p.status IN ('Active', 'Hidden')"; // Admin thấy cả hàng ẩn
+        try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
+            ResultSet rs = st.executeQuery(sql);
+            while (rs.next()) {
+                Product p = new Product(
+                        rs.getInt("product_id"),
+                        rs.getString("name"),
+                        rs.getDouble("price"),
+                        rs.getInt("stock"),
+                        rs.getString("image"),
+                        rs.getString("status"));
+                p.setCategoryId(rs.getInt("category_id"));
+                p.setCategoryName(rs.getString("category_name"));
+                p.setOrigin(rs.getString("origin"));
+                p.setSupplierName(rs.getString("supplier_name")); // Lấy tên NCC
+                p.setSupplierId(rs.getInt("supplier_id")); // Lấy ID NCC
+                list.add(p);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // Hàm mới: Chỉ lấy sản phẩm Active cho trang Mua Hàng
+    public ArrayList<Product> getActiveProducts() {
+        ArrayList<Product> list = new ArrayList<>();
+        String sql = "SELECT p.*, c.name AS category_name, s.name AS supplier_name FROM Product p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id " +
                 "WHERE p.status = 'Active'";
         try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
             ResultSet rs = st.executeQuery(sql);
@@ -25,6 +56,8 @@ public class ProductBUS {
                 p.setCategoryId(rs.getInt("category_id"));
                 p.setCategoryName(rs.getString("category_name"));
                 p.setOrigin(rs.getString("origin"));
+                p.setSupplierName(rs.getString("supplier_name"));
+                p.setSupplierId(rs.getInt("supplier_id"));
                 list.add(p);
             }
         } catch (Exception e) {
@@ -51,13 +84,14 @@ public class ProductBUS {
     }
 
     // Thêm tham số 'note'
-    public boolean addProduct(Product p, int employeeId, double entryPrice, String note) {
+    public int addProduct(Product p, int employeeId, double entryPrice, String note) {
         Connection con = null;
+        int newProductId = -1;
         try {
             con = ConnectDB.getConnection();
             con.setAutoCommit(false);
 
-            String sql = "INSERT INTO Product(name, price, stock, image, category_id, origin, status) VALUES (?, ?, ?, ?, ?, ?, 'Active')";
+            String sql = "INSERT INTO Product(name, price, stock, image, category_id, origin, status, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pst.setString(1, p.getName());
             pst.setDouble(2, p.getPrice());
@@ -72,11 +106,18 @@ public class ProductBUS {
             }
 
             pst.setString(6, p.getOrigin());
+            pst.setString(7, p.getStatus()); // Lưu trạng thái (Active/Hidden)
+
+            if (p.getSupplierId() > 0) {
+                pst.setInt(8, p.getSupplierId());
+            } else {
+                pst.setNull(8, java.sql.Types.INTEGER);
+            }
 
             if (pst.executeUpdate() > 0) {
                 ResultSet rs = pst.getGeneratedKeys();
                 if (rs.next()) {
-                    int newProductId = rs.getInt(1);
+                    newProductId = rs.getInt(1);
                     // Lưu vào lịch sử nhập kho với ghi chú
                     String entrySql = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, entry_date, note) VALUES (?, ?, ?, ?, GETDATE(), ?)";
                     PreparedStatement entryPst = con.prepareStatement(entrySql);
@@ -88,7 +129,6 @@ public class ProductBUS {
                     entryPst.executeUpdate();
                 }
                 con.commit();
-                return true;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -98,6 +138,7 @@ public class ProductBUS {
                 }
             } catch (SQLException ex) {
             }
+            return -1;
         } finally {
             try {
                 if (con != null) {
@@ -107,7 +148,7 @@ public class ProductBUS {
             } catch (SQLException ex) {
             }
         }
-        return false;
+        return newProductId;
     }
 
     // Thêm tham số 'note'
@@ -122,7 +163,7 @@ public class ProductBUS {
                 return false;
             }
 
-            String sql = "UPDATE Product SET name=?, price=?, stock=?, image=?, category_id=?, origin=? WHERE product_id=?";
+            String sql = "UPDATE Product SET name=?, price=?, stock=?, image=?, category_id=?, origin=?, status=?, supplier_id=? WHERE product_id=?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setString(1, p.getName());
             pst.setDouble(2, p.getPrice());
@@ -136,7 +177,14 @@ public class ProductBUS {
             }
 
             pst.setString(6, p.getOrigin());
-            pst.setInt(7, p.getId());
+            pst.setString(7, p.getStatus()); // Cập nhật trạng thái
+
+            if (p.getSupplierId() > 0) {
+                pst.setInt(8, p.getSupplierId());
+            } else {
+                pst.setNull(8, java.sql.Types.INTEGER);
+            }
+            pst.setInt(9, p.getId());
 
             if (pst.executeUpdate() > 0) {
                 // Chỉ ghi vào lịch sử nếu số lượng thực sự thay đổi
@@ -222,5 +270,70 @@ public class ProductBUS {
             }
         }
         return false;
+    }
+
+    // Hàm lấy giá nhập gần nhất từ lịch sử nhập kho (StockEntry)
+    public double getLatestEntryPrice(int productId) {
+        double price = 0;
+        String sql = "SELECT TOP 1 entry_price FROM StockEntry WHERE product_id = ? ORDER BY entry_date DESC";
+        try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, productId);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                price = rs.getDouble("entry_price");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return price;
+    }
+
+    // --- MỚI: XỬ LÝ NHIỀU ẢNH ---
+
+    // Lưu danh sách ảnh vào bảng product_images
+    public void saveProductImages(int productId, java.util.List<String> images) {
+        if (images == null || images.isEmpty())
+            return;
+
+        String sqlDel = "DELETE FROM product_images WHERE product_id = ?";
+        String sqlIns = "INSERT INTO product_images (product_id, image_path) VALUES (?, ?)";
+
+        try (Connection con = ConnectDB.getConnection()) {
+            // 1. Xóa ảnh cũ (nếu update)
+            try (PreparedStatement pstDel = con.prepareStatement(sqlDel)) {
+                pstDel.setInt(1, productId);
+                pstDel.executeUpdate();
+            }
+
+            // 2. Thêm ảnh mới
+            try (PreparedStatement pstIns = con.prepareStatement(sqlIns)) {
+                for (String path : images) {
+                    pstIns.setInt(1, productId);
+                    pstIns.setString(2, path);
+                    pstIns.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Hàm lấy danh sách ảnh của sản phẩm để hiển thị lên Panel
+    public java.util.List<String> getProductImages(int productId) {
+        java.util.List<String> list = new ArrayList<>();
+        String sql = "SELECT image_path FROM product_images WHERE product_id = ?";
+        try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, productId);
+            ResultSet rs = pst.executeQuery();
+            while (rs.next()) {
+                String path = rs.getString("image_path");
+                if (path != null && !path.isEmpty()) {
+                    list.add(path);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }

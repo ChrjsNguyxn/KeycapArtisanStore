@@ -1,7 +1,7 @@
 package com.keycapstore.dao;
 
 import com.keycapstore.model.ProductImageDTO;
-import com.mycompany.mavenproject2.DBConnection;
+import com.keycapstore.config.ConnectDB;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -13,8 +13,8 @@ public class ProductImageDAO {
         List<ProductImageDTO> list = new ArrayList<>();
         String sql = "SELECT * FROM product_images WHERE product_id=?";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, productId);
             ResultSet rs = ps.executeQuery();
@@ -24,8 +24,7 @@ public class ProductImageDAO {
                         rs.getInt("image_id"),
                         rs.getInt("product_id"),
                         rs.getString("image_url"),
-                        rs.getBoolean("is_thumbnail")
-                ));
+                        rs.getBoolean("is_thumbnail")));
             }
 
         } catch (Exception e) {
@@ -38,8 +37,8 @@ public class ProductImageDAO {
     public boolean insert(ProductImageDTO img) {
         String sql = "INSERT INTO product_images(product_id, image_url, is_thumbnail) VALUES (?, ?, ?)";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, img.getProductId());
             ps.setString(2, img.getImageUrl());

@@ -1,7 +1,7 @@
 package com.keycapstore.dao;
 
 import com.keycapstore.model.SupplierDTO;
-import com.mycompany.mavenproject2.DBConnection;
+import com.keycapstore.config.ConnectDB;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -17,9 +17,9 @@ public class SupplierDAO {
         List<SupplierDTO> list = new ArrayList<>();
         String sql = "SELECT * FROM suppliers";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 SupplierDTO s = new SupplierDTO();
@@ -45,8 +45,8 @@ public class SupplierDAO {
 
         String sql = "INSERT INTO suppliers (name, phone, address, email) VALUES (?, ?, ?, ?)";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, s.getName());
             ps.setString(2, s.getPhone());
@@ -69,8 +69,8 @@ public class SupplierDAO {
 
         String sql = "UPDATE suppliers SET name=?, phone=?, address=?, email=? WHERE supplier_id=?";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, s.getName());
             ps.setString(2, s.getPhone());
@@ -94,8 +94,8 @@ public class SupplierDAO {
 
         String sql = "DELETE FROM suppliers WHERE supplier_id=?";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
@@ -115,8 +115,8 @@ public class SupplierDAO {
         String sql = "SELECT * FROM suppliers WHERE supplier_id=?";
         SupplierDTO s = null;
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
@@ -136,24 +136,43 @@ public class SupplierDAO {
 
         return s;
     }
-    public SupplierDTO getById(int id){
-    String sql = "SELECT * FROM suppliers WHERE supplier_id = ?";
-    try(Connection conn = DBConnection.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql)){
 
-        ps.setInt(1,id);
-        ResultSet rs = ps.executeQuery();
+    public SupplierDTO getById(int id) {
+        String sql = "SELECT * FROM suppliers WHERE supplier_id = ?";
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        if(rs.next()){
-            SupplierDTO s = new SupplierDTO();
-            s.setSupplierId(rs.getInt("supplier_id"));
-            s.setName(rs.getString("name"));
-            return s;
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                SupplierDTO s = new SupplierDTO();
+                s.setSupplierId(rs.getInt("supplier_id"));
+                s.setName(rs.getString("name"));
+                return s;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-    }catch(Exception e){
-        e.printStackTrace();
+        return null;
     }
-    return null;
-}
+
+    public SupplierDTO findByName(String name) {
+        String sql = "SELECT * FROM suppliers WHERE name = ?";
+        try (Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                SupplierDTO s = new SupplierDTO();
+                s.setSupplierId(rs.getInt("supplier_id"));
+                s.setName(rs.getString("name"));
+                return s;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }
