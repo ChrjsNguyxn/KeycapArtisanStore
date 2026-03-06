@@ -6,11 +6,11 @@ import java.sql.SQLException;
 
 public class ConnectDB {
 
-    private static final String SERVER_NAME = "127.0.0.1";
+    private static final String SERVER_NAME = "LAPTOP-BSGNBTBD\\SQLEXPRESS";
     private static final String PORT = "1433";
     private static final String DB_NAME = "JavaKADB";
     private static final String USER = "sa";
-    private static final String PASSWORD = "sa";
+    private static final String PASSWORD = "1102";
 
     private static final boolean ENCRYPT = false;
     private static final boolean TRUST_CERT = true;

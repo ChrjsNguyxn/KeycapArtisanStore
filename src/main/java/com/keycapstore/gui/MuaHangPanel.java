@@ -1,85 +1,76 @@
 package com.keycapstore.gui;
 
+import com.keycapstore.bus.CategoryBUS;
+import com.keycapstore.bus.ProductBUS;
+import com.keycapstore.model.Category;
+import com.keycapstore.model.Product;
 import com.keycapstore.model.Customer;
 import com.keycapstore.model.Employee;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.net.URL;
+import java.util.stream.Collectors;
 
 public class MuaHangPanel extends JPanel {
     
-    private JPanel headerPanel, bannerPanel, categoryPanel, productsPanel;
+    private JPanel headerPanel, filterPanel, productsPanel, paginationPanel;
     private JTextField searchField;
     private JLabel cartCountLabel;
-    private JButton loginBtn;
+    private JButton loginBtn, cartBtn, btnApplyFilter;
+    private JComboBox<String> cbCategory, cbPriceRange, cbOrigin;
     private int cartCount = 0;
     private DecimalFormat df = new DecimalFormat("#,###");
     private Object currentUser;
     private boolean isGuest = false;
+    private List<GioHangPanel.CartItem> cartItems;
+    private ProductBUS productBus;
+    private CategoryBUS categoryBus;
     
-    // MÀU SẮC THEO BẢNG CHUẨN
-    private Color primaryDark = new Color(62, 54, 46);      // #3E362E - Màu chủ đạo
-    private Color creamLight = new Color(228, 220, 207);    // #E4DCCF - Nền sáng
-    private Color taupeGrey = new Color(153, 143, 133);     // #998F85 - Border
-    private Color glassWhite = new Color(255, 252, 245);    // #FFFCF5 - Card sản phẩm
-    private Color successGreen = new Color(46, 204, 113);   // #2ECC71 - Nút Thêm
-    private Color infoBlue = new Color(52, 152, 219);       // #3498DB - Nút Xem
-    private Color dangerRed = new Color(231, 76, 60);       // #E74C3C - Giá, Flash Sale
-    private Color textPrimary = new Color(51, 51, 51);      // #333333 - Chữ nội dung
+    // Màu sắc
+    private Color primaryDark = new Color(62, 54, 46);
+    private Color creamLight = new Color(228, 220, 207);
+    private Color taupeGrey = new Color(153, 143, 133);
+    private Color glassWhite = new Color(255, 252, 245);
+    private Color successGreen = new Color(46, 204, 113);
+    private Color infoBlue = new Color(52, 152, 219);
+    private Color dangerRed = new Color(231, 76, 60);
+    private Color textPrimary = new Color(51, 51, 51);
+    private Color orangeColor = new Color(255, 159, 67);
     
     // Font chữ
     private Font titleFont = new Font("Segoe UI", Font.BOLD, 18);
     private Font normalFont = new Font("Segoe UI", Font.PLAIN, 12);
-    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 10);
-    private Font priceFont = new Font("Segoe UI", Font.BOLD, 14);
-    private Font logoFont = new Font("Segoe UI", Font.BOLD, 22);
+    private Font smallFont = new Font("Segoe UI", Font.PLAIN, 11);
+    private Font priceFont = new Font("Segoe UI", Font.BOLD, 15);
+    private Font logoFont = new Font("Segoe UI", Font.BOLD, 20);
     
-    // Danh sách sản phẩm mẫu
-    private List<KeycapProduct> productList;
+    // Danh sách sản phẩm và phân trang
+    private List<Product> allProducts;
+    private List<Product> filteredProducts;
+    private List<Product> currentPageList;
+    private int currentPage = 1;
+    private int itemsPerPage = 6;
+    private int totalPages;
+    private JLabel pageInfoLabel;
+    private JButton btnPrev, btnNext, btnFirst, btnLast;
     
-    // Class sản phẩm nội bộ
-    class KeycapProduct {
-        String id;
-        String name;
-        String brand;
-        int price;
-        int originalPrice;
-        int discountPercent;
-        String profile;
-        String material;
-        int soldCount;
-        float rating;
-        
-        KeycapProduct(String id, String name, String brand, int price, int originalPrice, 
-                     String profile, String material, int soldCount, float rating) {
-            this.id = id;
-            this.name = name;
-            this.brand = brand;
-            this.price = price;
-            this.originalPrice = originalPrice;
-            this.discountPercent = originalPrice > 0 ? (int)((1 - (double)price/originalPrice) * 100) : 0;
-            this.profile = profile;
-            this.material = material;
-            this.soldCount = soldCount;
-            this.rating = rating;
-        }
-    }
-    
-    // Constructor nhận tham số user
     public MuaHangPanel(Object user) {
         this.currentUser = user;
+        this.cartItems = new ArrayList<>();
+        this.productBus = new ProductBUS();
+        this.categoryBus = new CategoryBUS();
         checkUserType();
-        initData();
+        loadDataFromDatabase();
         initUI();
     }
     
-    // Constructor mặc định (cho trường hợp không có user)
     public MuaHangPanel() {
         this(null);
     }
@@ -87,33 +78,43 @@ public class MuaHangPanel extends JPanel {
     private void checkUserType() {
         if (currentUser instanceof Customer) {
             Customer customer = (Customer) currentUser;
-            // Kiểm tra nếu là Guest (username bắt đầu bằng "guest_")
             if (customer.getUsername() != null && customer.getUsername().startsWith("guest_")) {
                 isGuest = true;
             } else {
-                isGuest = false; // Đã đăng nhập bằng tài khoản thật
+                isGuest = false;
             }
         } else if (currentUser instanceof Employee) {
-            isGuest = false; // Nhân viên đăng nhập
+            isGuest = false;
         } else {
-            isGuest = true; // Không có user -> Guest
+            isGuest = true;
         }
     }
     
-    private void initData() {
-        productList = new ArrayList<>();
+    private void loadDataFromDatabase() {
+        allProducts = productBus.getAvailableProducts();
+        filteredProducts = new ArrayList<>(allProducts);
         
-        // Thêm dữ liệu sản phẩm mẫu
-        productList.add(new KeycapProduct("KC001", "GMK Olivia++ Dark", "GMK", 2890000, 3500000, "Cherry", "ABS", 15000, 4.9f));
-        productList.add(new KeycapProduct("KC002", "PBT Hanami Dango", "Tai-Hao", 650000, 890000, "OEM", "PBT", 8500, 4.8f));
-        productList.add(new KeycapProduct("KC003", "ePBT Kuro Shiro", "ePBT", 990000, 1290000, "Cherry", "PBT", 6200, 4.7f));
-        productList.add(new KeycapProduct("KC004", "DOMIKEY SA", "DOMIKEY", 1450000, 1890000, "SA", "ABS", 4300, 4.6f));
-        productList.add(new KeycapProduct("KC005", "NP PBT Crayon", "NP", 599000, 750000, "XDA", "PBT", 12100, 4.8f));
-        productList.add(new KeycapProduct("KC006", "JTK Night Sakura", "JTK", 1690000, 2100000, "Cherry", "ABS", 2800, 4.9f));
-        productList.add(new KeycapProduct("KC007", "Akko Neon", "Akko", 499000, 650000, "ASA", "PBT", 23500, 4.7f));
-        productList.add(new KeycapProduct("KC008", "Maxkey SA", "Maxkey", 1290000, 1650000, "SA", "ABS", 5700, 4.5f));
-        productList.add(new KeycapProduct("KC009", "Keychron OEM", "Keychron", 450000, 590000, "OEM", "PBT", 18200, 4.6f));
-        productList.add(new KeycapProduct("KC010", "Ducky Joker", "Ducky", 890000, 1090000, "OEM", "PBT", 9400, 4.8f));
+        System.out.println("Đã load " + allProducts.size() + " sản phẩm từ database");
+        
+        // Tính tổng số trang
+        updatePagination();
+    }
+    
+    private void updatePagination() {
+        totalPages = (int) Math.ceil((double) filteredProducts.size() / itemsPerPage);
+        if (totalPages < 1) totalPages = 1;
+        currentPage = 1;
+        updateCurrentPage();
+    }
+    
+    private void updateCurrentPage() {
+        if (filteredProducts.isEmpty()) {
+            currentPageList = new ArrayList<>();
+            return;
+        }
+        int start = (currentPage - 1) * itemsPerPage;
+        int end = Math.min(start + itemsPerPage, filteredProducts.size());
+        currentPageList = filteredProducts.subList(start, end);
     }
     
     private void initUI() {
@@ -123,39 +124,354 @@ public class MuaHangPanel extends JPanel {
         // Header
         createHeader();
         
-        // Main content với scroll
-        JPanel mainContent = new JPanel();
-        mainContent.setLayout(new BoxLayout(mainContent, BoxLayout.Y_AXIS));
+        // Filter Panel
+        createFilterPanel();
+        
+        // Main content
+        JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setBackground(creamLight);
         
-        // Banner
-        mainContent.add(createBanner());
+        // Products panel
+        productsPanel = new JPanel();
+        productsPanel.setLayout(new BoxLayout(productsPanel, BoxLayout.Y_AXIS));
+        productsPanel.setBackground(creamLight);
+        productsPanel.setBorder(new EmptyBorder(5, 15, 5, 15));
         
-        // Danh mục (gộp title và button)
-        mainContent.add(createCategorySection());
+        // Title
+        updateTitle();
         
-        // Flash Sale
-        mainContent.add(createFlashSaleSection());
+        // Product grid
+        updateProductGrid();
         
-        // Sản phẩm nổi bật
-        mainContent.add(createFeaturedTitle("SẢN PHẨM NỔI BẬT"));
-        mainContent.add(createProductGrid(productList.subList(0, 4)));
+        // Pagination
+        createPagination();
         
-        // Sản phẩm mới
-        mainContent.add(createFeaturedTitle("SẢN PHẨM MỚI"));
-        mainContent.add(createProductGrid(productList.subList(4, 8)));
-        
-        // Gợi ý cho bạn
-        mainContent.add(createFeaturedTitle("GỢI Ý CHO BẠN"));
-        mainContent.add(createProductGrid(productList.subList(2, 6)));
-        
-        JScrollPane scrollPane = new JScrollPane(mainContent);
+        JScrollPane scrollPane = new JScrollPane(productsPanel);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.getViewport().setBackground(creamLight);
         
+        mainContent.add(filterPanel, BorderLayout.NORTH);
+        mainContent.add(scrollPane, BorderLayout.CENTER);
+        mainContent.add(paginationPanel, BorderLayout.SOUTH);
+        
         add(headerPanel, BorderLayout.NORTH);
-        add(scrollPane, BorderLayout.CENTER);
+        add(mainContent, BorderLayout.CENTER);
+    }
+    
+    private void createFilterPanel() {
+        filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        filterPanel.setBackground(creamLight);
+        filterPanel.setBorder(BorderFactory.createCompoundBorder(
+            new EmptyBorder(5, 15, 5, 15),
+            BorderFactory.createTitledBorder(
+                new LineBorder(taupeGrey, 1),
+                "BỘ LỌC",
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Segoe UI", Font.BOLD, 12),
+                primaryDark
+            )
+        ));
+        
+        // Lọc theo danh mục
+        filterPanel.add(new JLabel("Danh mục:"));
+        cbCategory = new JComboBox<>();
+        cbCategory.addItem("Tất cả");
+        
+        ArrayList<Category> categories = categoryBus.getAllCategories();
+        for (Category cat : categories) {
+            cbCategory.addItem(cat.getName());
+        }
+        cbCategory.setPreferredSize(new Dimension(120, 25));
+        cbCategory.setBackground(glassWhite);
+        filterPanel.add(cbCategory);
+        
+        // Lọc theo khoảng giá
+        filterPanel.add(new JLabel("Khoảng giá:"));
+        String[] priceRanges = {
+            "Tất cả",
+            "< 500k",
+            "500k - 1tr",
+            "1tr - 2tr",
+            "> 2tr"
+        };
+        cbPriceRange = new JComboBox<>(priceRanges);
+        cbPriceRange.setPreferredSize(new Dimension(90, 25));
+        cbPriceRange.setBackground(glassWhite);
+        filterPanel.add(cbPriceRange);
+        
+        // Lọc theo xuất xứ - Thêm Nhật Bản, USA, Trung Quốc
+        filterPanel.add(new JLabel("Xuất xứ:"));
+        cbOrigin = new JComboBox<>();
+        cbOrigin.addItem("Tất cả");
+        cbOrigin.addItem("Việt Nam");
+        cbOrigin.addItem("Nhật Bản");
+        cbOrigin.addItem("USA");
+        cbOrigin.addItem("Trung Quốc");
+        cbOrigin.addItem("Hàn Quốc");
+        
+        // Lấy các xuất xứ từ database và thêm vào nếu chưa có
+        List<String> dbOrigins = allProducts.stream()
+            .map(p -> p.getProfile())
+            .filter(o -> o != null && !o.isEmpty())
+            .distinct()
+            .sorted()
+            .collect(Collectors.toList());
+        
+        for (String origin : dbOrigins) {
+            boolean exists = false;
+            for (int i = 0; i < cbOrigin.getItemCount(); i++) {
+                if (cbOrigin.getItemAt(i).equals(origin)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists && !origin.equals("Tất cả")) {
+                cbOrigin.addItem(origin);
+            }
+        }
+        
+        cbOrigin.setPreferredSize(new Dimension(100, 25));
+        cbOrigin.setBackground(glassWhite);
+        filterPanel.add(cbOrigin);
+        
+        // Nút áp dụng
+        btnApplyFilter = new JButton("Lọc");
+        btnApplyFilter.setBackground(infoBlue);
+        btnApplyFilter.setForeground(glassWhite);
+        btnApplyFilter.setFont(smallFont);
+        btnApplyFilter.setBorderPainted(false);
+        btnApplyFilter.setFocusPainted(false);
+        btnApplyFilter.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnApplyFilter.addActionListener(e -> applyFilters());
+        filterPanel.add(btnApplyFilter);
+        
+        // Nút xóa lọc
+        JButton btnClearFilter = new JButton("Xóa");
+        btnClearFilter.setBackground(taupeGrey);
+        btnClearFilter.setForeground(glassWhite);
+        btnClearFilter.setFont(smallFont);
+        btnClearFilter.setBorderPainted(false);
+        btnClearFilter.setFocusPainted(false);
+        btnClearFilter.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClearFilter.addActionListener(e -> clearFilters());
+        filterPanel.add(btnClearFilter);
+    }
+    
+    private void applyFilters() {
+        String selectedCategory = (String) cbCategory.getSelectedItem();
+        String selectedPriceRange = (String) cbPriceRange.getSelectedItem();
+        String selectedOrigin = (String) cbOrigin.getSelectedItem();
+        
+        filteredProducts = new ArrayList<>(allProducts);
+        
+        // Lọc theo danh mục
+        if (selectedCategory != null && !selectedCategory.equals("Tất cả")) {
+            filteredProducts = filteredProducts.stream()
+                .filter(p -> selectedCategory.equals(p.getCategoryName()))
+                .collect(Collectors.toList());
+        }
+        
+        // Lọc theo khoảng giá
+        if (selectedPriceRange != null && !selectedPriceRange.equals("Tất cả")) {
+            switch (selectedPriceRange) {
+                case "< 500k":
+                    filteredProducts = filteredProducts.stream()
+                        .filter(p -> p.getPrice() < 500000)
+                        .collect(Collectors.toList());
+                    break;
+                case "500k - 1tr":
+                    filteredProducts = filteredProducts.stream()
+                        .filter(p -> p.getPrice() >= 500000 && p.getPrice() <= 1000000)
+                        .collect(Collectors.toList());
+                    break;
+                case "1tr - 2tr":
+                    filteredProducts = filteredProducts.stream()
+                        .filter(p -> p.getPrice() >= 1000000 && p.getPrice() <= 2000000)
+                        .collect(Collectors.toList());
+                    break;
+                case "> 2tr":
+                    filteredProducts = filteredProducts.stream()
+                        .filter(p -> p.getPrice() > 2000000)
+                        .collect(Collectors.toList());
+                    break;
+            }
+        }
+        
+        // Lọc theo xuất xứ
+        if (selectedOrigin != null && !selectedOrigin.equals("Tất cả")) {
+            filteredProducts = filteredProducts.stream()
+                .filter(p -> selectedOrigin.equals(p.getProfile()))
+                .collect(Collectors.toList());
+        }
+        
+        updatePagination();
+        updateTitle();
+        updateProductGrid();
+        pageInfoLabel.setText("Trang " + currentPage + "/" + totalPages);
+        updatePaginationButtons();
+    }
+    
+    private void clearFilters() {
+        cbCategory.setSelectedIndex(0);
+        cbPriceRange.setSelectedIndex(0);
+        cbOrigin.setSelectedIndex(0);
+        
+        filteredProducts = new ArrayList<>(allProducts);
+        updatePagination();
+        updateTitle();
+        updateProductGrid();
+        pageInfoLabel.setText("Trang " + currentPage + "/" + totalPages);
+        updatePaginationButtons();
+    }
+    
+    private void updateTitle() {
+        // Xóa title cũ nếu có
+        Component[] components = productsPanel.getComponents();
+        if (components.length > 0 && components[0] instanceof JLabel) {
+            productsPanel.remove(0);
+        }
+        
+        // Thêm title mới
+        JLabel titleLabel = new JLabel("TẤT CẢ SẢN PHẨM (" + filteredProducts.size() + " sản phẩm)", SwingConstants.CENTER);
+        titleLabel.setFont(titleFont);
+        titleLabel.setForeground(primaryDark);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titleLabel.setBorder(new EmptyBorder(5, 0, 15, 0));
+        productsPanel.add(titleLabel, 0);
+    }
+    
+    private void updateProductGrid() {
+        // Xóa grid cũ (giữ lại title)
+        while (productsPanel.getComponentCount() > 1) {
+            productsPanel.remove(1);
+        }
+        
+        if (currentPageList.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Không có sản phẩm phù hợp", SwingConstants.CENTER);
+            emptyLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            emptyLabel.setForeground(taupeGrey);
+            emptyLabel.setBorder(new EmptyBorder(50, 0, 50, 0));
+            emptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            productsPanel.add(emptyLabel);
+        } else {
+            // Tạo panel chứa grid với FlowLayout để căn giữa
+            JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            centerPanel.setBackground(creamLight);
+            
+            // Tạo grid với 3 cột
+            JPanel grid = new JPanel(new GridLayout(0, 3, 20, 20));
+            grid.setBackground(creamLight);
+            
+            // Đặt kích thước cố định cho grid
+            int cardWidth = 250;
+            int cardHeight = 300;
+            int gap = 20;
+            int gridWidth = 3 * cardWidth + 2 * gap;
+            grid.setPreferredSize(new Dimension(gridWidth, calculateGridHeight()));
+            grid.setMaximumSize(new Dimension(gridWidth, calculateGridHeight()));
+            grid.setMinimumSize(new Dimension(gridWidth, calculateGridHeight()));
+            
+            // Thêm sản phẩm
+            for (Product p : currentPageList) {
+                grid.add(createProductCard(p));
+            }
+            
+            // Thêm panel trống để giữ layout 3 cột
+            int itemsPerRow = 3;
+            int totalItems = currentPageList.size();
+            int remainder = totalItems % itemsPerRow;
+            
+            if (remainder != 0) {
+                int emptySlots = itemsPerRow - remainder;
+                for (int i = 0; i < emptySlots; i++) {
+                    JPanel emptyPanel = new JPanel();
+                    emptyPanel.setBackground(creamLight);
+                    emptyPanel.setPreferredSize(new Dimension(cardWidth, cardHeight));
+                    emptyPanel.setVisible(false);
+                    grid.add(emptyPanel);
+                }
+            }
+            
+            centerPanel.add(grid);
+            productsPanel.add(centerPanel);
+        }
+        
+        // Thêm glue để đẩy lên trên
+        productsPanel.add(Box.createVerticalGlue());
+        
+        productsPanel.revalidate();
+        productsPanel.repaint();
+    }
+    
+    private int calculateGridHeight() {
+        if (currentPageList.isEmpty()) return 0;
+        
+        int cardHeight = 300;
+        int gap = 20;
+        int rows = (int) Math.ceil((double) currentPageList.size() / 3);
+        
+        return rows * cardHeight + (rows - 1) * gap;
+    }
+    
+    private void createPagination() {
+        paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
+        paginationPanel.setBackground(creamLight);
+        
+        btnFirst = new JButton("<<");
+        btnPrev = new JButton("<");
+        pageInfoLabel = new JLabel("Trang " + currentPage + "/" + totalPages);
+        btnNext = new JButton(">");
+        btnLast = new JButton(">>");
+        
+        Font paginationFont = new Font("Segoe UI", Font.BOLD, 12);
+        Dimension buttonSize = new Dimension(45, 30);
+        
+        for (JButton btn : new JButton[]{btnFirst, btnPrev, btnNext, btnLast}) {
+            btn.setFont(paginationFont);
+            btn.setPreferredSize(buttonSize);
+            btn.setBackground(primaryDark);
+            btn.setForeground(glassWhite);
+            btn.setBorderPainted(false);
+            btn.setFocusPainted(false);
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        }
+        
+        pageInfoLabel.setFont(normalFont);
+        pageInfoLabel.setForeground(textPrimary);
+        pageInfoLabel.setBorder(new EmptyBorder(0, 10, 0, 10));
+        
+        btnFirst.addActionListener(e -> goToPage(1));
+        btnPrev.addActionListener(e -> goToPage(currentPage - 1));
+        btnNext.addActionListener(e -> goToPage(currentPage + 1));
+        btnLast.addActionListener(e -> goToPage(totalPages));
+        
+        paginationPanel.add(btnFirst);
+        paginationPanel.add(btnPrev);
+        paginationPanel.add(pageInfoLabel);
+        paginationPanel.add(btnNext);
+        paginationPanel.add(btnLast);
+        
+        updatePaginationButtons();
+    }
+    
+    private void goToPage(int page) {
+        if (page < 1 || page > totalPages || page == currentPage) return;
+        
+        currentPage = page;
+        updateCurrentPage();
+        updateProductGrid();
+        
+        pageInfoLabel.setText("Trang " + currentPage + "/" + totalPages);
+        updatePaginationButtons();
+    }
+    
+    private void updatePaginationButtons() {
+        btnFirst.setEnabled(currentPage > 1);
+        btnPrev.setEnabled(currentPage > 1);
+        btnNext.setEnabled(currentPage < totalPages);
+        btnLast.setEnabled(currentPage < totalPages);
     }
     
     private void createHeader() {
@@ -163,10 +479,9 @@ public class MuaHangPanel extends JPanel {
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setBackground(primaryDark);
         
-        // Top header
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setBackground(primaryDark);
-        topHeader.setBorder(new EmptyBorder(10, 15, 10, 15));
+        topHeader.setBorder(new EmptyBorder(8, 15, 8, 15));
         
         JLabel logoLabel = new JLabel("KEYCAP STORE");
         logoLabel.setFont(logoFont);
@@ -179,13 +494,14 @@ public class MuaHangPanel extends JPanel {
         JPanel cartPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         cartPanel.setBackground(primaryDark);
         
-        JButton cartBtn = new JButton("Giỏ hàng");
+        cartBtn = new JButton("Giỏ hàng");
         cartBtn.setFont(normalFont);
         cartBtn.setForeground(glassWhite);
         cartBtn.setBackground(primaryDark);
         cartBtn.setBorderPainted(false);
         cartBtn.setFocusPainted(false);
         cartBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        cartBtn.addActionListener(e -> openCart());
         
         cartCountLabel = new JLabel("0");
         cartCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -199,7 +515,7 @@ public class MuaHangPanel extends JPanel {
         
         rightPanel.add(cartPanel);
         
-        // Chỉ hiển thị nút Đăng nhập nếu là Guest
+        // Nút đăng nhập hoặc tên người dùng
         if (isGuest) {
             loginBtn = new JButton("Đăng nhập");
             loginBtn.setFont(normalFont);
@@ -209,17 +525,13 @@ public class MuaHangPanel extends JPanel {
             loginBtn.setFocusPainted(false);
             loginBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
             
-            // Thêm sự kiện cho nút đăng nhập
             loginBtn.addActionListener(e -> {
-                // Mở dialog đăng nhập
                 ModernLoginDialog loginDialog = new ModernLoginDialog();
                 loginDialog.setVisible(true);
-                // Sau khi đóng dialog, có thể cần refresh panel nếu đăng nhập thành công
             });
             
             rightPanel.add(loginBtn);
         } else {
-            // Nếu đã đăng nhập, hiển thị tên người dùng
             String userName = "Khách";
             if (currentUser instanceof Customer) {
                 userName = ((Customer) currentUser).getFullName();
@@ -237,12 +549,12 @@ public class MuaHangPanel extends JPanel {
         topHeader.add(rightPanel, BorderLayout.EAST);
         
         // Search bar
-        JPanel searchPanel = new JPanel(new BorderLayout(10, 0));
+        JPanel searchPanel = new JPanel(new BorderLayout(5, 0));
         searchPanel.setBackground(primaryDark);
-        searchPanel.setBorder(new EmptyBorder(5, 15, 15, 15));
+        searchPanel.setBorder(new EmptyBorder(0, 15, 8, 15));
         
         searchField = new JTextField();
-        searchField.setPreferredSize(new Dimension(0, 40));
+        searchField.setPreferredSize(new Dimension(0, 35));
         searchField.setFont(normalFont);
         searchField.setForeground(textPrimary);
         searchField.setBackground(glassWhite);
@@ -250,15 +562,23 @@ public class MuaHangPanel extends JPanel {
             new LineBorder(taupeGrey, 1),
             new EmptyBorder(5, 10, 5, 10)
         ));
+        searchField.putClientProperty("JTextField.placeholderText", "Tìm kiếm sản phẩm...");
+        searchField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                searchProducts();
+            }
+        });
         
-        JButton searchBtn = new JButton("Tìm kiếm");
+        JButton searchBtn = new JButton("Tìm");
         searchBtn.setFont(normalFont);
         searchBtn.setBackground(infoBlue);
         searchBtn.setForeground(glassWhite);
         searchBtn.setBorderPainted(false);
         searchBtn.setFocusPainted(false);
         searchBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        searchBtn.setPreferredSize(new Dimension(100, 40));
+        searchBtn.setPreferredSize(new Dimension(70, 35));
+        searchBtn.addActionListener(e -> searchProducts());
         
         searchPanel.add(searchField, BorderLayout.CENTER);
         searchPanel.add(searchBtn, BorderLayout.EAST);
@@ -267,374 +587,176 @@ public class MuaHangPanel extends JPanel {
         headerPanel.add(searchPanel);
     }
     
-    private JPanel createBanner() {
-        JPanel banner = new JPanel(new BorderLayout());
-        banner.setBackground(primaryDark);
-        banner.setPreferredSize(new Dimension(0, 150));
-        banner.setBorder(new EmptyBorder(20, 20, 20, 20));
+    private void searchProducts() {
+        String keyword = searchField.getText().toLowerCase().trim();
         
-        JLabel titleLabel = new JLabel("<html><center>FLASH SALE CUỐI TUẦN<br/>GIẢM GIÁ LÊN ĐẾN 50%</center></html>");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        titleLabel.setForeground(successGreen);
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JLabel subLabel = new JLabel("Chỉ từ 299.000đ");
-        subLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        subLabel.setForeground(glassWhite);
-        subLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JPanel textPanel = new JPanel(new BorderLayout());
-        textPanel.setOpaque(false);
-        textPanel.add(titleLabel, BorderLayout.CENTER);
-        textPanel.add(subLabel, BorderLayout.SOUTH);
-        
-        banner.add(textPanel, BorderLayout.CENTER);
-        
-        return banner;
-    }
-    
-    private JPanel createCategorySection() {
-        JPanel section = new JPanel(new BorderLayout());
-        section.setBackground(creamLight);
-        section.setBorder(new EmptyBorder(20, 15, 10, 15));
-        
-        // Panel chứa button danh mục chính (đã gộp title)
-        JPanel categoryButtonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
-        categoryButtonPanel.setBackground(creamLight);
-        categoryButtonPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
-        
-        // Button danh mục chính (đã gộp title)
-        JButton btnCategory = new JButton("📋 DANH MỤC");
-        btnCategory.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnCategory.setBackground(primaryDark);
-        btnCategory.setForeground(glassWhite);
-        btnCategory.setFocusPainted(false);
-        btnCategory.setBorderPainted(false);
-        btnCategory.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCategory.setPreferredSize(new Dimension(200, 45));
-        btnCategory.setHorizontalAlignment(SwingConstants.LEFT);
-        
-        // Panel chứa các danh mục con (ẩn ban đầu)
-        JPanel subCategoryPanel = new JPanel(new GridLayout(2, 4, 10, 10));
-        subCategoryPanel.setBackground(creamLight);
-        subCategoryPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
-        subCategoryPanel.setVisible(false); // Ẩn ban đầu
-        
-        String[] categories = {
-            "Cherry MX", "GMK", "PBT", "ABS",
-            "OEM", "SA", "XDA", "Custom"
-        };
-        
-        for (String cat : categories) {
-            JPanel catItem = new JPanel();
-            catItem.setLayout(new BoxLayout(catItem, BoxLayout.Y_AXIS));
-            catItem.setBackground(glassWhite);
-            catItem.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(taupeGrey, 1),
-                new EmptyBorder(10, 5, 10, 5)
-            ));
-            catItem.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            
-            JLabel nameLabel = new JLabel(cat);
-            nameLabel.setFont(normalFont);
-            nameLabel.setForeground(textPrimary);
-            nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            
-            catItem.add(nameLabel);
-            
-            // Thêm sự kiện click cho từng danh mục con
-            catItem.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    JOptionPane.showMessageDialog(MuaHangPanel.this, 
-                        "Bạn đã chọn danh mục: " + cat, 
-                        "Thông báo", 
-                        JOptionPane.INFORMATION_MESSAGE);
-                    // Sau này có thể lọc sản phẩm theo danh mục
-                    btnCategory.setText("📋 " + cat);
-                    subCategoryPanel.setVisible(false);
-                }
-            });
-            
-            subCategoryPanel.add(catItem);
+        if (keyword.isEmpty()) {
+            filteredProducts = new ArrayList<>(allProducts);
+        } else {
+            filteredProducts = allProducts.stream()
+                .filter(p -> p.getName().toLowerCase().contains(keyword))
+                .collect(Collectors.toList());
         }
         
-        // Xử lý sự kiện click cho button danh mục chính
-        btnCategory.addActionListener(e -> {
-            subCategoryPanel.setVisible(!subCategoryPanel.isVisible());
-            revalidate();
-            repaint();
-        });
-        
-        categoryButtonPanel.add(btnCategory);
-        
-        section.add(categoryButtonPanel, BorderLayout.NORTH);
-        section.add(subCategoryPanel, BorderLayout.CENTER);
-        
-        return section;
+        updatePagination();
+        updateTitle();
+        updateProductGrid();
+        pageInfoLabel.setText("Trang " + currentPage + "/" + totalPages);
+        updatePaginationButtons();
     }
     
-    private JPanel createFlashSaleSection() {
-        JPanel section = new JPanel(new BorderLayout());
-        section.setBackground(creamLight);
-        section.setBorder(new EmptyBorder(20, 15, 10, 15));
+    private void openCart() {
+        GioHangPanel cartDialog = new GioHangPanel(
+            (JFrame) SwingUtilities.getWindowAncestor(this), 
+            cartItems, 
+            currentUser
+        );
+        cartDialog.setVisible(true);
         
-        // Title với timer
-        JPanel titlePanel = new JPanel(new BorderLayout());
-        titlePanel.setBackground(creamLight);
-        
-        JLabel title = new JLabel("FLASH SALE");
-        title.setFont(titleFont);
-        title.setForeground(dangerRed);
-        
-        JLabel timer = new JLabel("23:59:45");
-        timer.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        timer.setForeground(dangerRed);
-        
-        titlePanel.add(title, BorderLayout.WEST);
-        titlePanel.add(timer, BorderLayout.EAST);
-        
-        // Sản phẩm flash sale
-        JPanel productRow = new JPanel(new GridLayout(1, 3, 10, 0));
-        productRow.setBackground(creamLight);
-        productRow.setBorder(new EmptyBorder(15, 0, 0, 0));
-        
-        List<KeycapProduct> flashSaleItems = productList.subList(1, 4);
-        for (KeycapProduct p : flashSaleItems) {
-            productRow.add(createFlashSaleItem(p));
-        }
-        
-        section.add(titlePanel, BorderLayout.NORTH);
-        section.add(productRow, BorderLayout.CENTER);
-        
-        return section;
+        cartCountLabel.setText(String.valueOf(cartItems.size()));
     }
     
-    private JPanel createFlashSaleItem(KeycapProduct p) {
-        JPanel item = new JPanel();
-        item.setLayout(new BoxLayout(item, BoxLayout.Y_AXIS));
-        item.setBackground(glassWhite);
-        item.setBorder(new LineBorder(taupeGrey, 1));
-        
-        JLabel imageLabel = new JLabel("Hình ảnh");
-        imageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        imageLabel.setForeground(primaryDark);
-        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        imageLabel.setPreferredSize(new Dimension(80, 80));
-        imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        JLabel nameLabel = new JLabel(p.name);
-        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        nameLabel.setForeground(textPrimary);
-        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
-        JLabel brandLabel = new JLabel(p.brand);
-        brandLabel.setFont(smallFont);
-        brandLabel.setForeground(taupeGrey);
-        brandLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
-        JPanel pricePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        pricePanel.setBackground(glassWhite);
-        
-        String originalPriceStr = df.format(p.originalPrice) + "₫";
-        String priceStr = df.format(p.price) + "₫";
-        
-        JLabel originalPrice = new JLabel(originalPriceStr);
-        originalPrice.setFont(smallFont);
-        originalPrice.setForeground(taupeGrey);
-        
-        JLabel discountPrice = new JLabel(priceStr);
-        discountPrice.setFont(priceFont);
-        discountPrice.setForeground(dangerRed);
-        
-        pricePanel.add(originalPrice);
-        pricePanel.add(discountPrice);
-        
-        JLabel discount = new JLabel("-" + p.discountPercent + "%");
-        discount.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        discount.setForeground(glassWhite);
-        discount.setBackground(dangerRed);
-        discount.setOpaque(true);
-        discount.setBorder(new EmptyBorder(2, 5, 2, 5));
-        discount.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
-        JLabel soldLabel = new JLabel("Đã bán " + p.soldCount + "+");
-        soldLabel.setFont(smallFont);
-        soldLabel.setForeground(taupeGrey);
-        soldLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
-        JButton addBtn = new JButton("Thêm vào giỏ");
-        addBtn.setFont(smallFont);
-        addBtn.setBackground(successGreen);
-        addBtn.setForeground(glassWhite);
-        addBtn.setBorderPainted(false);
-        addBtn.setFocusPainted(false);
-        addBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        addBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        addBtn.addActionListener(e -> {
-            cartCount++;
-            cartCountLabel.setText(String.valueOf(cartCount));
-            JOptionPane.showMessageDialog(this, "Đã thêm " + p.name + " vào giỏ hàng!");
-        });
-        
-        item.add(Box.createVerticalStrut(10));
-        item.add(imageLabel);
-        item.add(Box.createVerticalStrut(5));
-        item.add(nameLabel);
-        item.add(brandLabel);
-        item.add(Box.createVerticalStrut(5));
-        item.add(pricePanel);
-        item.add(Box.createVerticalStrut(3));
-        item.add(discount);
-        item.add(Box.createVerticalStrut(3));
-        item.add(soldLabel);
-        item.add(Box.createVerticalStrut(5));
-        item.add(addBtn);
-        item.add(Box.createVerticalStrut(10));
-        
-        return item;
-    }
-    
-    private JPanel createFeaturedTitle(String titleText) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(creamLight);
-        panel.setBorder(new EmptyBorder(20, 15, 10, 15));
-        
-        JLabel title = new JLabel(titleText);
-        title.setFont(titleFont);
-        title.setForeground(primaryDark);
-        
-        JLabel viewAll = new JLabel("Xem tất cả →");
-        viewAll.setFont(normalFont);
-        viewAll.setForeground(infoBlue);
-        viewAll.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        panel.add(title, BorderLayout.WEST);
-        panel.add(viewAll, BorderLayout.EAST);
-        
-        return panel;
-    }
-    
-    private JPanel createProductGrid(List<KeycapProduct> products) {
-        JPanel grid = new JPanel(new GridLayout(0, 2, 15, 15));
-        grid.setBackground(creamLight);
-        grid.setBorder(new EmptyBorder(0, 15, 20, 15));
-        
-        for (KeycapProduct p : products) {
-            grid.add(createProductCard(p));
-        }
-        
-        return grid;
-    }
-    
-    private JPanel createProductCard(KeycapProduct p) {
+    private JPanel createProductCard(Product p) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(glassWhite);
-        card.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(taupeGrey, 1),
-            new EmptyBorder(12, 10, 12, 10)
-        ));
+        card.setBorder(new LineBorder(taupeGrey, 1));
+        card.setPreferredSize(new Dimension(250, 300));
+        card.setMaximumSize(new Dimension(250, 300));
+        card.setMinimumSize(new Dimension(250, 300));
         
-        JLabel imageLabel = new JLabel("Hình ảnh");
-        imageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        imageLabel.setForeground(primaryDark);
-        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        imageLabel.setPreferredSize(new Dimension(100, 80));
+        // Panel chứa ảnh
+        JPanel imagePanel = new JPanel(new BorderLayout());
+        imagePanel.setPreferredSize(new Dimension(210, 130));
+        imagePanel.setMaximumSize(new Dimension(210, 130));
+        imagePanel.setBackground(new Color(240, 240, 240));
+        imagePanel.setOpaque(true);
+        
+        JLabel imageLabel = new JLabel();
         imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imageLabel.setVerticalAlignment(SwingConstants.CENTER);
         
-        JLabel brandLabel = new JLabel(p.brand);
-        brandLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        brandLabel.setForeground(primaryDark);
-        brandLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        if (p.getImage() != null && !p.getImage().isEmpty()) {
+            try {
+                String imagePath = p.getImage();
+                URL imageUrl = getClass().getResource(imagePath);
+                
+                if (imageUrl != null) {
+                    ImageIcon originalIcon = new ImageIcon(imageUrl);
+                    Image originalImage = originalIcon.getImage();
+                    
+                    int maxWidth = 190;
+                    int maxHeight = 110;
+                    
+                    Image scaledImage = originalImage.getScaledInstance(maxWidth, maxHeight, Image.SCALE_SMOOTH);
+                    imageLabel.setIcon(new ImageIcon(scaledImage));
+                } else {
+                    imageLabel.setText("No Image");
+                    imageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                }
+            } catch (Exception e) {
+                imageLabel.setText("No Image");
+                imageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            }
+        } else {
+            imageLabel.setText("No Image");
+            imageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        }
         
-        JLabel nameLabel = new JLabel(p.name);
+        imagePanel.add(imageLabel, BorderLayout.CENTER);
+        
+        // Tên sản phẩm
+        JLabel nameLabel = new JLabel(p.getName());
         nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         nameLabel.setForeground(textPrimary);
         nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JPanel specsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        specsPanel.setBackground(glassWhite);
+        // Danh mục
+        JLabel categoryLabel = new JLabel("Danh mục: " + p.getCategoryName());
+        categoryLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        categoryLabel.setForeground(infoBlue);
+        categoryLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JLabel profileLabel = new JLabel(p.profile);
-        profileLabel.setFont(smallFont);
-        profileLabel.setForeground(taupeGrey);
-        
-        JLabel materialLabel = new JLabel(p.material);
-        materialLabel.setFont(smallFont);
-        materialLabel.setForeground(taupeGrey);
-        
-        specsPanel.add(profileLabel);
-        specsPanel.add(new JLabel("•"));
-        specsPanel.add(materialLabel);
-        
-        JPanel ratingPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        ratingPanel.setBackground(glassWhite);
-        
-        JLabel ratingLabel = new JLabel("Đánh giá: " + p.rating + "/5");
-        ratingLabel.setFont(smallFont);
-        ratingLabel.setForeground(textPrimary);
-        ratingPanel.add(ratingLabel);
-        
-        JPanel pricePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-        pricePanel.setBackground(glassWhite);
-        
-        String priceStr = df.format(p.price) + "₫";
-        
-        if (p.originalPrice > p.price) {
-            String originalPriceStr = df.format(p.originalPrice) + "₫";
-            JLabel originalPrice = new JLabel(originalPriceStr);
-            originalPrice.setFont(smallFont);
-            originalPrice.setForeground(taupeGrey);
-            pricePanel.add(originalPrice);
+        // Xuất xứ
+        String origin = p.getProfile();
+        if (origin == null || origin.isEmpty()) {
+            origin = "Không rõ";
         }
+        JLabel originLabel = new JLabel("XS: " + origin);
+        originLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        originLabel.setForeground(taupeGrey);
+        originLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
+        // Giá
+        String priceStr = df.format(p.getPrice()) + "₫";
         JLabel priceLabel = new JLabel(priceStr);
         priceLabel.setFont(priceFont);
         priceLabel.setForeground(dangerRed);
-        pricePanel.add(priceLabel);
+        priceLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        if (p.discountPercent > 0) {
-            JLabel discountLabel = new JLabel("-" + p.discountPercent + "%");
-            discountLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
-            discountLabel.setForeground(glassWhite);
-            discountLabel.setBackground(dangerRed);
-            discountLabel.setOpaque(true);
-            discountLabel.setBorder(new EmptyBorder(2, 4, 2, 4));
-            pricePanel.add(discountLabel);
-        }
+        // Panel chứa 2 nút
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 8, 0));
+        buttonPanel.setBackground(glassWhite);
+        buttonPanel.setMaximumSize(new Dimension(220, 30));
+        buttonPanel.setBorder(new EmptyBorder(5, 0, 0, 0));
         
-        JLabel soldLabel = new JLabel("Đã bán " + p.soldCount + "+");
-        soldLabel.setFont(smallFont);
-        soldLabel.setForeground(taupeGrey);
-        soldLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
-        JButton addBtn = new JButton("Thêm vào giỏ");
-        addBtn.setFont(smallFont);
-        addBtn.setBackground(successGreen);
-        addBtn.setForeground(glassWhite);
-        addBtn.setBorderPainted(false);
-        addBtn.setFocusPainted(false);
-        addBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        addBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        addBtn.addActionListener(e -> {
-            cartCount++;
-            cartCountLabel.setText(String.valueOf(cartCount));
-            JOptionPane.showMessageDialog(this, "Đã thêm " + p.name + " vào giỏ hàng!");
+        JButton addToCartBtn = new JButton("Thêm");
+        addToCartBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        addToCartBtn.setBackground(successGreen);
+        addToCartBtn.setForeground(glassWhite);
+        addToCartBtn.setBorderPainted(false);
+        addToCartBtn.setFocusPainted(false);
+        addToCartBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        addToCartBtn.addActionListener(e -> {
+            boolean exists = false;
+            for (GioHangPanel.CartItem item : cartItems) {
+                if (item.getId().equals(String.valueOf(p.getId()))) {
+                    item.setQuantity(item.getQuantity() + 1);
+                    exists = true;
+                    break;
+                }
+            }
+            
+            if (!exists) {
+                cartItems.add(new GioHangPanel.CartItem(
+                    String.valueOf(p.getId()), 
+                    p.getName(), 
+                    p.getCategoryName(), 
+                    (int) p.getPrice(), 
+                    1, 
+                    p.getImage()
+                ));
+            }
+            
+            cartCountLabel.setText(String.valueOf(cartItems.size()));
+            JOptionPane.showMessageDialog(this, "Đã thêm " + p.getName() + " vào giỏ hàng!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         });
         
-        card.add(imageLabel);
+        JButton buyNowBtn = new JButton("Mua");
+        buyNowBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        buyNowBtn.setBackground(orangeColor);
+        buyNowBtn.setForeground(glassWhite);
+        buyNowBtn.setBorderPainted(false);
+        buyNowBtn.setFocusPainted(false);
+        buyNowBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        buyNowBtn.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, "Bạn đã chọn mua ngay: " + p.getName() + "\nGiá: " + df.format(p.getPrice()) + "₫", "Mua ngay", JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        buttonPanel.add(addToCartBtn);
+        buttonPanel.add(buyNowBtn);
+        
         card.add(Box.createVerticalStrut(8));
-        card.add(brandLabel);
+        card.add(imagePanel);
+        card.add(Box.createVerticalStrut(8));
         card.add(nameLabel);
+        card.add(categoryLabel);
+        card.add(originLabel);
         card.add(Box.createVerticalStrut(5));
-        card.add(specsPanel);
-        card.add(ratingPanel);
-        card.add(Box.createVerticalStrut(5));
-        card.add(pricePanel);
-        card.add(soldLabel);
+        card.add(priceLabel);
         card.add(Box.createVerticalStrut(8));
-        card.add(addBtn);
+        card.add(buttonPanel);
+        card.add(Box.createVerticalStrut(8));
         
         return card;
     }

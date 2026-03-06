@@ -74,8 +74,7 @@ public class ProductPanel extends JPanel implements Refreshable {
         filterPanel.add(Box.createHorizontalStrut(15));
         filterPanel.add(createLabel("Sắp xếp:"));
         cbSort = new JComboBox<>(new String[] { "Tất cả (Mặc định)", "Giá: Thấp -> Cao", "Giá: Cao -> Thấp",
-                "Tồn kho: Thấp -> Cao", "Tồn kho: Cao -> Thấp", "Loại: Switch", "Loại: Keycap Set",
-                "Loại: Artisan Keycap" });
+                "Tồn kho: Thấp -> Cao", "Tồn kho: Cao -> Thấp", "Loại: Artisan Keycap", "Loại: Keycap Set" });
         cbSort.setFocusable(false);
         filterPanel.add(cbSort);
 
@@ -84,7 +83,6 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(Color.WHITE);
-
         formPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         formPanel.addMouseListener(outsideClick);
 
@@ -106,7 +104,7 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         addInput(formPanel, gbc, "Giá bán (VNĐ):", txtPrice = new JTextField());
         addInput(formPanel, gbc, "Giá nhập (VNĐ):", txtEntryPrice = new JTextField());
-        addInput(formPanel, gbc, "Xuất xứ:", txtOrigin = new JTextField());
+        addInput(formPanel, gbc, "Xuất xứ (Profile):", txtOrigin = new JTextField());
         addInput(formPanel, gbc, "Số lượng tồn kho:", txtStock = new JTextField());
         addInput(formPanel, gbc, "Tên file ảnh (VD: gmk.png):", txtImage = new JTextField());
 
@@ -135,6 +133,7 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         add(scrollPane, BorderLayout.EAST);
 
+        // Sửa headers để bao gồm cột Xuất xứ
         String[] headers = { "ID", "Tên Sản Phẩm", "Danh Mục", "Giá Bán", "Tồn Kho", "Xuất xứ", "Hình Ảnh" };
         model = new DefaultTableModel(headers, 0);
 
@@ -198,8 +197,12 @@ public class ProductPanel extends JPanel implements Refreshable {
                         txtPrice.setText(rawPrice);
                         txtEntryPrice.setText("0");
                         txtStock.setText(model.getValueAt(row, 4).toString());
-                        txtOrigin.setText(model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : "");
-                        txtImage.setText(model.getValueAt(row, 6).toString());
+                        
+                        // Hiển thị xuất xứ (profile) vào ô txtOrigin
+                        String origin = model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : "";
+                        txtOrigin.setText(origin);
+                        
+                        txtImage.setText(model.getValueAt(row, 6) != null ? model.getValueAt(row, 6).toString() : "");
 
                         btnAdd.setEnabled(false);
                     } catch (Exception ex) {
@@ -226,12 +229,10 @@ public class ProductPanel extends JPanel implements Refreshable {
         if (categoryName == null)
             return 99;
         switch (categoryName) {
-            case "Switch":
+            case "Artisan Keycap":
                 return 1;
             case "Keycap Set":
                 return 2;
-            case "Artisan Keycap":
-                return 3;
             default:
                 return 4;
         }
@@ -312,9 +313,20 @@ public class ProductPanel extends JPanel implements Refreshable {
 
         model.setRowCount(0);
         for (Product p : filtered) {
+            // Lấy giá trị profile (xuất xứ), nếu null thì hiển thị chuỗi rỗng
+            String origin = p.getProfile();
+            if (origin == null) {
+                origin = "";
+            }
+            
             model.addRow(new Object[] {
-                    p.getId(), p.getName(), p.getCategoryName(), df.format(p.getPrice()), p.getStock(),
-                    p.getOrigin(), p.getImage()
+                    p.getId(), 
+                    p.getName(), 
+                    p.getCategoryName(), 
+                    df.format(p.getPrice()), 
+                    p.getStock(),
+                    origin, // Hiển thị xuất xứ
+                    p.getImage() != null ? p.getImage() : ""
             });
         }
     }
@@ -340,6 +352,7 @@ public class ProductPanel extends JPanel implements Refreshable {
                     JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ: Tên, Giá bán, Giá nhập và Số lượng!");
                     return;
                 }
+                
                 int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc muốn thêm sản phẩm này vào kho?",
                         "Xác nhận", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
@@ -348,11 +361,20 @@ public class ProductPanel extends JPanel implements Refreshable {
                     p.setPrice(Double.parseDouble(txtPrice.getText().trim()));
                     p.setStock(Integer.parseInt(txtStock.getText().trim()));
                     p.setImage(txtImage.getText().trim());
-                    p.setOrigin(txtOrigin.getText().trim());
+                    
+                    // Lấy giá trị từ ô "Xuất xứ" và set vào profile
+                    String originText = txtOrigin.getText().trim();
+                    if (!originText.isEmpty()) {
+                        p.setProfile(originText);
+                        System.out.println("Đã set profile: " + originText);
+                    } else {
+                        p.setProfile("");
+                    }
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
                         p.setCategoryId(c.getCategoryId());
+                        System.out.println("Category ID: " + c.getCategoryId());
                     }
 
                     double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim());
@@ -362,6 +384,8 @@ public class ProductPanel extends JPanel implements Refreshable {
                         JOptionPane.showMessageDialog(this, "Nhập kho thành công!");
                         loadData();
                         clearForm();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Thêm sản phẩm thất bại! Kiểm tra lại dữ liệu.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             } catch (NumberFormatException ex) {
@@ -373,8 +397,10 @@ public class ProductPanel extends JPanel implements Refreshable {
         });
 
         btnUpdate.addActionListener(e -> {
-            if (selectedId == -1)
+            if (selectedId == -1) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn sản phẩm cần sửa!");
                 return;
+            }
 
             try {
                 if (currentUser == null) {
@@ -416,12 +442,20 @@ public class ProductPanel extends JPanel implements Refreshable {
                     p.setPrice(Double.parseDouble(txtPrice.getText().trim()));
                     p.setStock(newStock);
                     p.setImage(txtImage.getText().trim());
-                    p.setOrigin(txtOrigin.getText().trim());
+                    
+                    // Lấy giá trị từ ô "Xuất xứ" và set vào profile
+                    String originText = txtOrigin.getText().trim();
+                    if (!originText.isEmpty()) {
+                        p.setProfile(originText);
+                    } else {
+                        p.setProfile("");
+                    }
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
                         p.setCategoryId(c.getCategoryId());
                     }
+                    
                     double entryPrice = Double.parseDouble(txtEntryPrice.getText().trim());
 
                     if (bus.updateProduct(p, currentUser.getEmployeeId(), entryPrice, note)) {
@@ -439,8 +473,10 @@ public class ProductPanel extends JPanel implements Refreshable {
         });
 
         btnDelete.addActionListener(e -> {
-            if (selectedId == -1)
+            if (selectedId == -1) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn sản phẩm cần xóa!");
                 return;
+            }
 
             try {
                 if (currentUser == null) {
