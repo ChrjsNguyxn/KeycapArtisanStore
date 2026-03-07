@@ -3,37 +3,111 @@ package com.keycapstore.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.keycapstore.config.ConnectDB;
+import com.keycapstore.dto.Product;
 
 public class ProductDAO {
 
-    public boolean decreaseStock(int productId, int quantity, Connection conn) throws SQLException {
-        String sql = "UPDATE products SET stock = stock - ? WHERE product_id = ? AND stock >= ?";
+    /**
+     * Lấy toàn bộ sản phẩm đang active
+     */
+    public List<Product> getAllProducts() {
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        List<Product> productList = new ArrayList<>();
 
-            ps.setInt(1, quantity);
-            ps.setInt(2, productId);
-            ps.setInt(3, quantity);
+        String sql = "SELECT product_id, name, price, stock_quantity " +
+                     "FROM products WHERE is_active = 1";
 
-            int affected = ps.executeUpdate();
-            return affected > 0; // nếu = 0 nghĩa là không đủ stock
+        try (
+                Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()
+        ) {
+
+            while (rs.next()) {
+
+                Product product = new Product();
+
+                product.setProductId(rs.getInt("product_id"));
+                product.setName(rs.getString("name"));
+                product.setPrice(rs.getDouble("price"));
+                product.setStock(rs.getInt("stock_quantity"));
+
+                productList.add(product);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        return productList;
     }
 
-    public double getPriceById(int productId, Connection conn) throws SQLException {
-        String sql = "SELECT price FROM products WHERE product_id = ?";
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+    /**
+     * Lấy sản phẩm theo ID
+     */
+    public Product getProductById(int id) {
 
-            ps.setInt(1, productId);
+        String sql = "SELECT product_id, name, price, stock_quantity " +
+                     "FROM products WHERE product_id = ?";
+
+        try (
+                Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(1, id);
+
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
-                return rs.getDouble("price");
+
+                Product product = new Product();
+
+                product.setProductId(rs.getInt("product_id"));
+                product.setName(rs.getString("name"));
+                product.setPrice(rs.getDouble("price"));
+                product.setStock(rs.getInt("stock_quantity"));
+
+                return product;
             }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-        throw new SQLException("Product not found");
+        return null;
     }
+
+
+    /**
+     * Giảm stock sau khi đặt hàng
+     */
+    public boolean updateStock(int productId, int quantity) {
+
+        String sql = "UPDATE products " +
+                     "SET stock_quantity = stock_quantity - ? " +
+                     "WHERE product_id = ?";
+
+        try (
+                Connection conn = ConnectDB.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setInt(1, quantity);
+            ps.setInt(2, productId);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
 }

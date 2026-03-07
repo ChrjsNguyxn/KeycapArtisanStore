@@ -1,72 +1,34 @@
 package com.keycapstore.bus;
 
-import com.keycapstore.config.ConnectDB;
-import com.keycapstore.dao.OrderDAO;
-import com.keycapstore.dao.OrderItemDAO;
-import com.keycapstore.dto.Order;
-import com.keycapstore.dto.OrderItem;
-
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.keycapstore.dao.OrderDAO;
+import com.keycapstore.dao.VoucherDAO;
+import com.keycapstore.dto.OrderItem;
+import com.keycapstore.dto.Voucher;
+
 public class OrderBUS {
 
+    private List<OrderItem> cart = new ArrayList<>();
+
+    private Voucher voucher;
+
     private final OrderDAO orderDAO = new OrderDAO();
-    private final OrderItemDAO itemDAO = new OrderItemDAO();
-    private final List<OrderItem> cart = new ArrayList<>();
+    private final VoucherDAO voucherDAO = new VoucherDAO();
 
-    public void createOrder(Order order, List<OrderItem> items) {
-        Connection conn = null;
-        try {
-            conn = ConnectDB.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+    public void addProduct(int id, String name, double price) {
 
-            int orderId = orderDAO.insert(order, conn);
-
-            if (orderId == -1) {
-                System.out.println("Create order failed");
-                conn.rollback();
-                return;
-            }
-
-            for (OrderItem item : items) {
-                item.setOrderId(orderId);
-                itemDAO.insert(item, conn);
-            }
-
-            conn.commit(); // Commit transaction
-            System.out.println("Order created successfully");
-        } catch (SQLException e) {
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                } catch (SQLException rollbackEx) {
-                    System.err.println("Rollback failed: " + rollbackEx.getMessage());
-                }
-            }
-            System.err.println("Order creation failed: " + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    System.err.println("Connection close failed: " + e.getMessage());
-                }
-            }
-        }
-    }
-
-    public void addProduct(int productId, String productName, double price) {
         for (OrderItem item : cart) {
-            if (item.getProductId() == productId) {
+
+            if (item.getProductId() == id) {
+
                 item.setQuantity(item.getQuantity() + 1);
-                item.setSubtotal(item.getQuantity() * price);
                 return;
             }
         }
-        cart.add(new OrderItem(productId, productName, 1, price));
+
+        cart.add(new OrderItem(id, name, price, 1));
     }
 
     public List<OrderItem> getCart() {
@@ -74,7 +36,37 @@ public class OrderBUS {
     }
 
     public double getTotal() {
-        return cart.stream().mapToDouble(OrderItem::getSubtotal).sum();
+
+        double total = 0;
+
+        for (OrderItem item : cart) {
+            total += item.getTotal();
+        }
+
+        if (voucher != null) {
+            total = total - (total * voucher.getDiscountPercent() / 100);
+        }
+
+        return total;
+    }
+
+    public boolean applyVoucher(String code) {
+
+        voucher = voucherDAO.findByCode(code);
+
+        return voucher != null;
+    }
+
+    public void checkout(int customerId) {
+
+        int voucherId = voucher == null ? 0 : voucher.getVoucherId();
+
+        int orderId = orderDAO.createOrder(customerId, voucherId, getTotal());
+
+        orderDAO.insertOrderItems(orderId, cart);
+
+        cart.clear();
+        voucher = null;
     }
 
     public void clearCart() {

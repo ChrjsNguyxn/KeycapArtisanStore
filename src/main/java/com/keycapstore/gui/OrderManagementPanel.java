@@ -1,241 +1,257 @@
 package com.keycapstore.gui;
 
-import com.keycapstore.bus.OrderBUS;
-import com.keycapstore.dto.OrderItem;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.util.ArrayList;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+
+import com.keycapstore.bus.OrderBUS;
+import com.keycapstore.dao.ProductDAO;
+import com.keycapstore.dto.OrderItem;
+import com.keycapstore.dto.Product;
 
 public class OrderManagementPanel extends JPanel {
 
     private JTable tblProducts;
     private JTable tblCart;
 
-    private JLabel lblTotal;
-
     private DefaultTableModel productModel;
     private DefaultTableModel cartModel;
 
-    private final OrderBUS orderBUS = new OrderBUS();
+    private JTextField txtVoucher;
+    private JLabel lblTotal;
+
+    private ArrayList<OrderItem> cart = new ArrayList<>();
+
+    private ProductDAO productDAO = new ProductDAO();
+    private OrderBUS orderBUS = new OrderBUS();
 
     public OrderManagementPanel() {
+        setLayout(new BorderLayout());
+        setBackground(ThemeColor.CREAM_LIGHT);
 
         initUI();
-
+        loadProducts();
     }
 
     private void initUI() {
 
-        setLayout(new BorderLayout());
-        setBackground(ThemeColor.CREAM_LIGHT);
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(ThemeColor.CREAM_LIGHT);
 
-        // ===== TITLE =====
-        JLabel lblTitle = new JLabel("ORDER");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblTitle.setForeground(ThemeColor.PRIMARY_DARK);
-        lblTitle.setBorder(new EmptyBorder(20, 20, 10, 20));
+        JLabel title = new JLabel(" Quản lý đơn hàng");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        title.setForeground(ThemeColor.PRIMARY_DARK);
 
-        add(lblTitle, BorderLayout.NORTH);
+        topPanel.add(title, BorderLayout.WEST);
 
-        // ===== PRODUCT TABLE =====
+        add(topPanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 15, 15));
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+        centerPanel.setBackground(ThemeColor.CREAM_LIGHT);
+
+        centerPanel.add(createProductPanel());
+        centerPanel.add(createCartPanel());
+
+        add(centerPanel, BorderLayout.CENTER);
+    }
+
+    private JPanel createProductPanel() {
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createTitledBorder("Sản phẩm"));
 
         productModel = new DefaultTableModel(
-                new String[]{"ID", "Tên sản phẩm", "Giá", "Tồn kho"}, 0);
-
-        tblProducts = new JTable(productModel);
-        styleTable(tblProducts);
-
-        JScrollPane productScroll = new JScrollPane(tblProducts);
-
-        // ===== CART TABLE =====
-
-        cartModel = new DefaultTableModel(
-                new String[]{"Tên", "Giá", "SL", "Thành tiền"}, 0);
-
-        tblCart = new JTable(cartModel);
-        styleTable(tblCart);
-
-        JScrollPane cartScroll = new JScrollPane(tblCart);
-
-        // ===== LEFT PANEL =====
-
-        JPanel leftPanel = createGlassPanel();
-        leftPanel.setLayout(new BorderLayout());
-        leftPanel.setBorder(new EmptyBorder(15,15,15,15));
-
-        JLabel lblProduct = new JLabel("Danh sách sản phẩm");
-        lblProduct.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblProduct.setForeground(ThemeColor.TEXT_PRIMARY);
-
-        leftPanel.add(lblProduct, BorderLayout.NORTH);
-        leftPanel.add(productScroll, BorderLayout.CENTER);
-
-        JButton btnAdd = new JButton("Thêm vào giỏ");
-        btnAdd.setBackground(ThemeColor.SUCCESS_GREEN);
-        btnAdd.setForeground(Color.WHITE);
-
-        JPanel addPanel = new JPanel();
-        addPanel.setBackground(ThemeColor.GLASS_WHITE);
-        addPanel.add(btnAdd);
-
-        leftPanel.add(addPanel, BorderLayout.SOUTH);
-
-        // ===== RIGHT PANEL =====
-
-        JPanel rightPanel = createGlassPanel();
-        rightPanel.setLayout(new BorderLayout());
-        rightPanel.setBorder(new EmptyBorder(15,15,15,15));
-
-        JLabel lblCart = new JLabel("Giỏ hàng");
-        lblCart.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblCart.setForeground(ThemeColor.TEXT_PRIMARY);
-
-        rightPanel.add(lblCart, BorderLayout.NORTH);
-        rightPanel.add(cartScroll, BorderLayout.CENTER);
-
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBackground(ThemeColor.GLASS_WHITE);
-
-        lblTotal = new JLabel("Tổng tiền: 0 VND");
-        lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblTotal.setForeground(ThemeColor.PRIMARY_DARK);
-
-        JButton btnPay = new JButton("Thanh toán");
-        btnPay.setBackground(ThemeColor.PRIMARY_DARK);
-        btnPay.setForeground(Color.WHITE);
-
-        bottomPanel.add(lblTotal, BorderLayout.WEST);
-        bottomPanel.add(btnPay, BorderLayout.EAST);
-
-        rightPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-        // ===== SPLIT =====
-
-        JSplitPane splitPane = new JSplitPane(
-                JSplitPane.HORIZONTAL_SPLIT,
-                leftPanel,
-                rightPanel
+                new String[]{"ID","Tên","Giá","Số lượng"},0
         );
 
-        splitPane.setDividerLocation(500);
-        splitPane.setBorder(null);
+        tblProducts = new JTable(productModel);
+        JScrollPane scroll = new JScrollPane(tblProducts);
 
-        add(splitPane, BorderLayout.CENTER);
+        panel.add(scroll, BorderLayout.CENTER);
 
-        // ===== LOAD DEMO DATA =====
-
-        loadProducts();
-
-        // ===== EVENTS =====
+        JButton btnAdd = new JButton("Thêm vào giỏ hàng");
+        btnAdd.setBackground(ThemeColor.PRIMARY_DARK);
+        btnAdd.setForeground(Color.WHITE);
 
         btnAdd.addActionListener(e -> addProductToCart());
 
-        btnPay.addActionListener(e -> paymentDialog());
-
-    }
-
-    private JPanel createGlassPanel() {
-
-        JPanel panel = new JPanel();
-        panel.setBackground(ThemeColor.GLASS_WHITE);
-        panel.setBorder(BorderFactory.createLineBorder(ThemeColor.TAUPE_GREY));
+        panel.add(btnAdd, BorderLayout.SOUTH);
 
         return panel;
     }
 
-    private void styleTable(JTable table) {
+    private JPanel createCartPanel() {
 
-        table.setRowHeight(28);
-        table.setBackground(Color.WHITE);
-        table.setForeground(ThemeColor.TEXT_PRIMARY);
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createTitledBorder("Giỏ hàng"));
 
-        table.getTableHeader().setBackground(ThemeColor.PRIMARY_DARK);
-        table.getTableHeader().setForeground(Color.WHITE);
+        cartModel = new DefaultTableModel(
+                new String[]{"Mã sản phẩm","Tên","Giá","Số lượng","Thành tiền"},0
+        );
+
+        tblCart = new JTable(cartModel);
+        JScrollPane scroll = new JScrollPane(tblCart);
+
+        panel.add(scroll, BorderLayout.CENTER);
+
+        JPanel bottom = new JPanel(new GridLayout(4,1,5,5));
+
+        JPanel voucherPanel = new JPanel(new BorderLayout());
+
+        txtVoucher = new JTextField();
+        JButton btnApply = new JButton("Áp dụng voucher");
+
+        btnApply.addActionListener(e -> applyVoucher());
+
+        voucherPanel.add(txtVoucher,BorderLayout.CENTER);
+        voucherPanel.add(btnApply,BorderLayout.EAST);
+
+        lblTotal = new JLabel("Tổng: 0");
+
+        JButton btnCheckout = new JButton("Thanh toán");
+        btnCheckout.setBackground(ThemeColor.SUCCESS_GREEN);
+        btnCheckout.setForeground(Color.WHITE);
+
+        btnCheckout.addActionListener(e -> checkout());
+
+        bottom.add(voucherPanel);
+        bottom.add(lblTotal);
+        bottom.add(btnCheckout);
+
+        panel.add(bottom,BorderLayout.SOUTH);
+
+        return panel;
     }
 
     private void loadProducts() {
 
-        productModel.addRow(new Object[]{1, "Keycap Sakura", 250000, 10});
-        productModel.addRow(new Object[]{2, "Keycap PBT", 300000, 20});
-        productModel.addRow(new Object[]{3, "Keycap RGB", 400000, 15});
+        productModel.setRowCount(0);
+
+        try {
+
+            java.util.List<Product> products = productDAO.getAllProducts();
+
+            for(Product p : products){
+
+                productModel.addRow(new Object[]{
+                        p.getProductId(),
+                        p.getName(),
+                        p.getPrice(),
+                        p.getStock()
+                });
+
+            }
+
+        }catch(Exception e){
+            // log error
+        }
 
     }
 
-    private void addProductToCart() {
+    private void addProductToCart(){
 
         int row = tblProducts.getSelectedRow();
 
-        if (row == -1) {
-
-            JOptionPane.showMessageDialog(this, "Chọn sản phẩm trước");
+        if(row == -1){
+            JOptionPane.showMessageDialog(this,"Vui lòng chọn sản phẩm");
             return;
-
         }
 
         int id = (int) productModel.getValueAt(row,0);
         String name = (String) productModel.getValueAt(row,1);
         double price = (double) productModel.getValueAt(row,2);
 
-        orderBUS.addProduct(id,name,price);
+        int qty = 1;
 
-        refreshCart();
+        OrderItem item = new OrderItem();
 
+        item.setProductId(id);
+        item.setQuantity(qty);
+        item.setPrice(price);
+
+        cart.add(item);
+
+        cartModel.addRow(new Object[]{
+                id,
+                name,
+                price,
+                qty,
+                price * qty
+        });
+
+        updateTotal();
     }
 
-    private void refreshCart() {
+    private void updateTotal(){
 
-        cartModel.setRowCount(0);
+        double total = 0;
 
-        for(OrderItem item : orderBUS.getCart()) {
+        for(OrderItem item : cart){
 
-            cartModel.addRow(new Object[]{
-                    item.getProductName(),
-                    item.getPrice(),
-                    item.getQuantity(),
-                    item.getTotal()
-            });
+            total += item.getPrice() * item.getQuantity();
 
         }
 
-        lblTotal.setText("Tổng tiền: " + orderBUS.getTotal() + " VND");
-
+        lblTotal.setText("Total: " + total);
     }
 
-    private void paymentDialog() {
+    private void applyVoucher(){
 
-        if(orderBUS.getCart().isEmpty()) {
+        String code = txtVoucher.getText();
 
-            JOptionPane.showMessageDialog(this,"Giỏ hàng trống");
+        boolean success = orderBUS.applyVoucher(code);
+
+        if(!success){
+
+            JOptionPane.showMessageDialog(this,"Voucher không hợp lệ");
+
             return;
-
         }
 
-        String[] methods = {
-                "Thanh toán khi nhận hàng (COD)",
-                "Thanh toán tiền mặt tại quầy"
-        };
+        updateTotal();
 
-        int choice = JOptionPane.showOptionDialog(
+    }
+
+    private void checkout(){
+
+        String[] options = {"COD","Thanh toán khi nhận hàng"};
+
+        int payment = JOptionPane.showOptionDialog(
                 this,
                 "Chọn phương thức thanh toán",
                 "Thanh toán",
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
                 null,
-                methods,
-                methods[0]
+                options,
+                options[0]
         );
 
-        if(choice == -1) return;
+        if(payment == -1) return;
 
-        JOptionPane.showMessageDialog(this,
-                "Đặt hàng thành công!");
+        orderBUS.checkout(1); // placeholder customer ID
 
-        orderBUS.clearCart();
+        JOptionPane.showMessageDialog(this,"Đặt hàng thành công");
 
-        refreshCart();
+        cart.clear();
+        cartModel.setRowCount(0);
+
+        updateTotal();
 
     }
 

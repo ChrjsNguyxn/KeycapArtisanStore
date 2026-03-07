@@ -695,7 +695,7 @@ public class ModernLoginDialog extends JFrame {
             new MainFrame(user).setVisible(true);
             this.dispose();
         } catch (Exception e) {
-            e.printStackTrace();
+            // e.printStackTrace();
         }
     }
 

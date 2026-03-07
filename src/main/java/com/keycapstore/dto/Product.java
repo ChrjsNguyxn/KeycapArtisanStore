@@ -5,21 +5,39 @@ public class Product {
     private int productId;
     private String name;
     private double price;
-    private int stockQuantity;
+    private int stock;
 
-    public Product(int productId, String name, double price, int stockQuantity) {
-        this.productId = productId;
-        this.name = name;
-        this.price = price;
-        this.stockQuantity = stockQuantity;
+    public Product() {}
+
+    public int getProductId() {
+        return productId;
     }
 
-    public int getProductId() 
-        { return productId; }
-    public String getName() 
-        { return name; }
-    public double getPrice() 
-        { return price; }
-    public int getStockQuantity() 
-        { return stockQuantity; }
+    public void setProductId(int productId) {
+        this.productId = productId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public void setStock(int stock) {
+        this.stock = stock;
+    }
 }
