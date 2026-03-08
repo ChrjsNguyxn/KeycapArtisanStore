@@ -8,6 +8,7 @@ import com.keycapstore.model.Employee;
 import com.keycapstore.model.Product;
 import com.keycapstore.model.SupplierDTO;
 import com.keycapstore.utils.ThemeColor;
+import com.keycapstore.utils.ExportHelper;
 import com.keycapstore.utils.ImageHelper; // Import Helper
 import com.keycapstore.gui.components.MultiImageInput; // Import Component
 import java.awt.*;
@@ -31,9 +32,9 @@ public class ProductPanel extends JPanel implements Refreshable {
     private JTextField txtName, txtPrice, txtStock, txtOrigin, txtEntryPrice;
     private MultiImageInput pnlImages; // Thay thế txtImage
     private JComboBox<Category> cbCategory;
-    private JTextField txtSupplier; // Sửa: Dùng TextField thay vì ComboBox
+    private JTextField txtSupplier;
     private JCheckBox chkPublic; // Thêm: Checkbox hiển thị
-    private JButton btnAdd, btnUpdate, btnDelete, btnClear;
+    private JButton btnAdd, btnUpdate, btnDelete, btnClear, btnExportExcel;
     private JTextField txtSearch;
     private JComboBox<String> cbSort;
     private ProductBUS bus;
@@ -79,6 +80,11 @@ public class ProductPanel extends JPanel implements Refreshable {
                 "Loại: Artisan Keycap" });
         cbSort.setFocusable(false);
         filterPanel.add(cbSort);
+
+        // THÊM NÚT XUẤT EXCEL
+        filterPanel.add(Box.createHorizontalStrut(20));
+        btnExportExcel = createButton("XUẤT FILE KIỂM KHO", ThemeColor.PRIMARY);
+        filterPanel.add(btnExportExcel);
 
         topPanel.add(filterPanel, BorderLayout.SOUTH);
         add(topPanel, BorderLayout.NORTH);
@@ -421,6 +427,13 @@ public class ProductPanel extends JPanel implements Refreshable {
             }
         });
         cbSort.addActionListener(e -> updateTable());
+
+        btnExportExcel.addActionListener(e -> {
+            String filePath = ExportHelper.promptSaveLocation(this, "BaoCao_Kho_Keycap.xlsx", "xlsx", "Excel Files");
+            if (filePath != null) {
+                ExportHelper.exportTableToExcel(table, filePath);
+            }
+        });
 
         btnAdd.addActionListener(e -> {
             try {

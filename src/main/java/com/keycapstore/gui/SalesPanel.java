@@ -3,6 +3,7 @@ package com.keycapstore.gui;
 import com.keycapstore.bus.CustomerBUS;
 import com.keycapstore.bus.ProductBUS;
 import com.keycapstore.bus.SalesBUS;
+import com.keycapstore.utils.ExportHelper;
 import com.keycapstore.model.*;
 import com.keycapstore.utils.ThemeColor;
 
@@ -754,6 +755,29 @@ public class SalesPanel extends JPanel implements Refreshable {
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Giao dịch thành công! Đã tự động cộng điểm Rank.");
+
+                // --- TỰ ĐỘNG IN HÓA ĐƠN PDF ---
+                try {
+                    // Tạo ID hóa đơn tạm thời cho tên file và nội dung
+                    String invoiceIdForPdf = "HD" + System.currentTimeMillis();
+                    String totalText = lblFinalTotal.getText(); // "TỔNG PHẢI TRẢ: 1,500,000 ₫"
+
+                    // Lấy phần số tiền và đơn vị
+                    String totalAmount = totalText.substring(totalText.indexOf(":") + 1).trim();
+
+                    // HỎI NGƯỜI DÙNG NƠI LƯU FILE
+                    String filePath = ExportHelper.promptSaveLocation(this, "HoaDon_" + invoiceIdForPdf + ".pdf", "pdf",
+                            "Hóa đơn PDF");
+
+                    if (filePath != null) {
+                        ExportHelper.exportBillToPDF(tbCart, invoiceIdForPdf, totalAmount, filePath);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "Lỗi khi xuất hóa đơn PDF: " + ex.getMessage(), "Lỗi PDF",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+
                 // Reset form
                 try {
                     cartItems.clear();

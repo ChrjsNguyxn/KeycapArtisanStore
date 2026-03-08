@@ -14,6 +14,7 @@ public class MainFrame extends JFrame {
     private JPanel contentPanel;
     private CardLayout cardLayout;
     private JPanel sidebarPanel;
+    private java.util.Map<String, JPanel> panelCache = new java.util.HashMap<>();
 
     private MenuButton btnDashboard, btnMuaHang, btnProduct, btnEmployee, btnCustomer, btnSales, btnLogout, btnRefresh,
             btnHistory,
@@ -76,36 +77,6 @@ public class MainFrame extends JFrame {
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(ThemeColor.BG_LIGHT);
 
-        // Thêm các panel
-        contentPanel.add(new DashboardPanel(this::navigateTo), "DASHBOARD");
-        contentPanel.add(new MuaHangPanel(currentUser, this::navigateTo), "MUAHANG"); // Panel Mua Hàng mới
-
-        if (currentUser instanceof Employee) {
-            contentPanel.add(new ProductPanel((Employee) currentUser), "PRODUCT");
-            contentPanel.add(new SalesPanel((Employee) currentUser), "SALES");
-        } else {
-            contentPanel.add(new JPanel(), "SALES");
-            contentPanel.add(new JPanel(), "PRODUCT");
-        }
-        contentPanel.add(new CartPanel(), "CART"); // Panel Giỏ hàng
-        contentPanel.add(new MyOrdersPanel(), "MY_ORDERS"); // Panel Lịch sử mua
-        contentPanel.add(new OrderHistoryPanel(), "HISTORY");
-        contentPanel.add(new ShippingPanel(), "SHIPPING");
-        contentPanel.add(new CustomerPanel(), "CUSTOMER");
-        contentPanel.add(new VoucherPanel(), "VOUCHER");
-
-        boolean isSuperAdmin = false;
-        if (currentUser instanceof Employee) {
-            Employee emp = (Employee) currentUser;
-            if ("super_admin".equals(emp.getRole())) {
-                isSuperAdmin = true;
-                contentPanel.add(new EmployeePanel(), "EMPLOYEE");
-            }
-        }
-
-        contentPanel.add(new StockEntryHistoryPanel(), "STOCK_HISTORY");
-        contentPanel.add(new ImportManagementPanel(), "IMPORT_MANAGE"); // Panel mới
-
         // --- PHÂN QUYỀN SIDEBAR ---
 
         // 1. KHÁCH HÀNG (Customer)
@@ -148,13 +119,10 @@ public class MainFrame extends JFrame {
 
         // Thiết lập trang mặc định khi mở
         if (currentUser instanceof Customer) {
-            cardLayout.show(contentPanel, "MUAHANG");
-            updateActiveButton(btnMuaHang);
+            navigateTo("MUAHANG");
         } else {
-            cardLayout.show(contentPanel, "DASHBOARD");
-            updateActiveButton(btnDashboard);
+            navigateTo("DASHBOARD");
         }
-
         // Thêm action listeners
         btnDashboard.addActionListener(e -> navigateTo("DASHBOARD"));
         btnMuaHang.addActionListener(e -> navigateTo("MUAHANG")); // Action cho nút Mua Hàng
@@ -186,56 +154,100 @@ public class MainFrame extends JFrame {
     }
 
     public void navigateTo(String cardName) {
-        cardLayout.show(contentPanel, cardName);
-
-        // Cập nhật trạng thái nút
-        switch (cardName) {
-            case "DASHBOARD":
-                updateActiveButton(btnDashboard);
-                break;
-            case "MUAHANG":
-                updateActiveButton(btnMuaHang);
-                break;
-            case "PRODUCT":
-                updateActiveButton(btnProduct);
-                break;
-            case "STOCK_HISTORY":
-                updateActiveButton(btnStockHistory);
-                break;
-            case "IMPORT_MANAGE":
-                updateActiveButton(btnImportManage);
-                break;
-            case "SALES":
-                updateActiveButton(btnSales);
-                break;
-            case "SHIPPING":
-                updateActiveButton(btnShipping);
-                break;
-            case "HISTORY":
-                updateActiveButton(btnHistory);
-                break;
-            case "CUSTOMER":
-                updateActiveButton(btnCustomer);
-                break;
-            case "EMPLOYEE":
-                updateActiveButton(btnEmployee);
-                break;
-            case "VOUCHER":
-                updateActiveButton(btnVoucher);
-                break;
-            case "CART":
-                updateActiveButton(btnCart);
-                break;
-            case "MY_ORDERS":
-                updateActiveButton(btnMyOrders);
-                break;
+        // LAZY LOADING: Chỉ tạo panel khi được gọi lần đầu
+        if (!panelCache.containsKey(cardName)) {
+            JPanel newPanel = createPanelFor(cardName);
+            if (newPanel != null) {
+                panelCache.put(cardName, newPanel);
+                contentPanel.add(newPanel, cardName);
+            } else {
+                // Xử lý trường hợp không có quyền truy cập hoặc panel không tồn tại
+                System.err.println("Không thể tạo hoặc truy cập panel: " + cardName);
+                return;
+            }
         }
 
-        // Refresh dữ liệu nếu cần
-        for (Component comp : contentPanel.getComponents()) {
-            if (comp.isVisible() && comp instanceof Refreshable) {
-                ((Refreshable) comp).refresh();
-            }
+        cardLayout.show(contentPanel, cardName);
+        updateActiveButton(getButtonForCard(cardName));
+
+        // Làm mới panel vừa được hiển thị
+        JPanel currentPanel = panelCache.get(cardName);
+        if (currentPanel instanceof Refreshable) {
+            ((Refreshable) currentPanel).refresh();
+        }
+    }
+
+    // Hàm tạo panel theo tên (cardName)
+    private JPanel createPanelFor(String cardName) {
+        switch (cardName) {
+            case "DASHBOARD":
+                return new DashboardPanel(this::navigateTo);
+            case "MUAHANG":
+                return new MuaHangPanel(currentUser, this::navigateTo);
+            case "CART":
+                return new CartPanel();
+            case "MY_ORDERS":
+                return new MyOrdersPanel();
+            case "HISTORY":
+                return new OrderHistoryPanel();
+            case "SHIPPING":
+                return new ShippingPanel();
+            case "CUSTOMER":
+                return new CustomerPanel();
+            case "VOUCHER":
+                return new VoucherPanel();
+            case "STOCK_HISTORY":
+                return new StockEntryHistoryPanel();
+            case "IMPORT_MANAGE":
+                return new ImportManagementPanel();
+            case "PRODUCT":
+                if (currentUser instanceof Employee)
+                    return new ProductPanel((Employee) currentUser);
+                break;
+            case "SALES":
+                if (currentUser instanceof Employee)
+                    return new SalesPanel((Employee) currentUser);
+                break;
+            case "EMPLOYEE":
+                if (currentUser instanceof Employee && "super_admin".equals(((Employee) currentUser).getRole())) {
+                    return new EmployeePanel();
+                }
+                break;
+        }
+        return new JPanel(); // Trả về panel trống nếu không khớp
+    }
+
+    // Hàm lấy button tương ứng với cardName
+    private MenuButton getButtonForCard(String cardName) {
+        switch (cardName) {
+            case "DASHBOARD":
+                return btnDashboard;
+            case "MUAHANG":
+                return btnMuaHang;
+            case "PRODUCT":
+                return btnProduct;
+            case "SALES":
+                return btnSales;
+            case "SHIPPING":
+                return btnShipping;
+            case "CUSTOMER":
+                return btnCustomer;
+            case "EMPLOYEE":
+                return btnEmployee;
+            case "STOCK_HISTORY":
+                return btnStockHistory;
+            case "HISTORY":
+                return btnHistory;
+            case "IMPORT_MANAGE":
+                return btnImportManage;
+            case "VOUCHER":
+                return btnVoucher;
+            case "CART":
+                return btnCart;
+            case "MY_ORDERS":
+                return btnMyOrders;
+            default:
+                return null;
         }
     }
 

@@ -5,6 +5,7 @@ import com.keycapstore.model.Employee;
 import com.keycapstore.utils.ModernButton;
 import com.keycapstore.utils.ModernTable;
 import com.keycapstore.utils.ThemeColor;
+import com.keycapstore.utils.ExportHelper;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ public class EmployeePanel extends JPanel implements Refreshable {
     private DefaultTableModel model;
     private JTextField txtUser, txtPass, txtName, txtEmail, txtPin, txtPhone;
     private JComboBox<String> cbRole, cbStatus;
-    private ModernButton btnAdd, btnUpdate, btnDelete, btnClear;
+    private ModernButton btnAdd, btnUpdate, btnDelete, btnClear, btnExport;
     private EmployeeBUS bus;
     private int selectedId = -1;
 
@@ -72,18 +73,20 @@ public class EmployeePanel extends JPanel implements Refreshable {
         formPanel.add(cbStatus, gbc);
 
         // BUTTON GROUP
-        JPanel btnPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        JPanel btnPanel = new JPanel(new GridLayout(3, 2, 10, 10)); // Tăng số dòng lên 3
         btnPanel.setOpaque(false);
 
         btnAdd = new ModernButton("THÊM", ThemeColor.SUCCESS);
         btnUpdate = new ModernButton("SỬA", ThemeColor.INFO);
         btnDelete = new ModernButton("XÓA", ThemeColor.DANGER);
         btnClear = new ModernButton("MỚI", ThemeColor.WARNING);
+        btnExport = new ModernButton("XUẤT EXCEL", ThemeColor.PRIMARY); // Nút mới
 
         btnPanel.add(btnAdd);
         btnPanel.add(btnUpdate);
         btnPanel.add(btnDelete);
         btnPanel.add(btnClear);
+        btnPanel.add(btnExport); // Thêm vào panel
 
         btnUpdate.setEnabled(false);
         btnDelete.setEnabled(false);
@@ -282,6 +285,13 @@ public class EmployeePanel extends JPanel implements Refreshable {
         });
 
         btnClear.addActionListener(e -> clearForm());
+
+        btnExport.addActionListener(e -> {
+            String path = ExportHelper.promptSaveLocation(this, "DanhSach_NhanVien.xlsx", "xlsx", "Excel Files");
+            if (path != null) {
+                ExportHelper.exportTableToExcel(table, path);
+            }
+        });
     }
 
     private void clearForm() {

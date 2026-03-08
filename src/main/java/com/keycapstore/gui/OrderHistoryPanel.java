@@ -3,6 +3,7 @@ package com.keycapstore.gui;
 import com.keycapstore.bus.InvoiceBUS;
 import com.keycapstore.model.Invoice;
 import com.keycapstore.model.InvoiceDetail;
+import com.keycapstore.utils.ExportHelper;
 import com.keycapstore.utils.ThemeColor;
 import java.awt.*;
 import java.util.Calendar;
@@ -154,11 +155,51 @@ public class OrderHistoryPanel extends JPanel implements Refreshable {
 
         pnlInvoice.add(new JScrollPane(tbInvoice), BorderLayout.CENTER);
 
+        // --- THANH CÔNG CỤ (BUTTONS) ---
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.setBackground(Color.WHITE);
+
         JButton btnRefresh = new JButton("Làm mới danh sách");
         btnRefresh.setBackground(ThemeColor.INFO);
         btnRefresh.setForeground(Color.WHITE);
         btnRefresh.addActionListener(e -> loadInvoices());
-        pnlInvoice.add(btnRefresh, BorderLayout.SOUTH);
+
+        JButton btnExportExcel = new JButton("Xuất Excel");
+        btnExportExcel.setBackground(ThemeColor.SUCCESS);
+        btnExportExcel.setForeground(Color.WHITE);
+        btnExportExcel.addActionListener(e -> {
+            String path = ExportHelper.promptSaveLocation(this, "LichSu_DonHang.xlsx", "xlsx", "Excel Files");
+            if (path != null) {
+                ExportHelper.exportTableToExcel(tbInvoice, path);
+            }
+        });
+
+        JButton btnPrintPDF = new JButton("In Hóa Đơn (PDF)");
+        btnPrintPDF.setBackground(ThemeColor.PRIMARY);
+        btnPrintPDF.setForeground(Color.WHITE);
+        btnPrintPDF.addActionListener(e -> {
+            int row = tbInvoice.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một hóa đơn để in!");
+                return;
+            }
+
+            // Lấy thông tin từ dòng đang chọn
+            String billId = modInvoice.getValueAt(row, 0).toString();
+            String total = modInvoice.getValueAt(row, 7).toString().replace(" ₫", "").trim(); // Bỏ chữ đ
+
+            // Chọn nơi lưu PDF
+            String path = ExportHelper.promptSaveLocation(this, "HoaDon_" + billId + ".pdf", "pdf", "PDF Files");
+            if (path != null) {
+                // Truyền bảng tbDetail (chi tiết món) vào hàm xuất PDF
+                ExportHelper.exportBillToPDF(tbDetail, billId, total, path);
+            }
+        });
+
+        btnPanel.add(btnRefresh);
+        btnPanel.add(btnExportExcel);
+        btnPanel.add(btnPrintPDF);
+        pnlInvoice.add(btnPanel, BorderLayout.SOUTH);
 
         splitPane.setTopComponent(pnlInvoice);
 

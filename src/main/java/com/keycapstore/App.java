@@ -2,6 +2,11 @@ package com.keycapstore;
 
 import java.awt.Font;
 import javax.swing.SwingUtilities;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.keycapstore.gui.ModernLoginDialog;
@@ -9,9 +14,59 @@ import com.keycapstore.gui.ModernLoginDialog;
 public class App {
     public static void main(String[] args) {
         FlatLightLaf.setup();
-
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 14));
 
+        // --- TẠO MÀN HÌNH CHỜ (LOADING SCREEN) ---
+        final JFrame loadingFrame = new JFrame("Đang khởi động...");
+        loadingFrame.setSize(350, 120);
+        loadingFrame.setLocationRelativeTo(null);
+        loadingFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        JLabel loadingLabel = new JLabel("Đang kiểm tra và thiết lập cơ sở dữ liệu...", SwingConstants.CENTER);
+        loadingLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        loadingFrame.add(loadingLabel);
+        loadingFrame.setVisible(true);
+
+        // --- CHẠY TÁC VỤ NẶNG (DB) TRÊN LUỒNG NỀN ---
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                // Gọi hàm kiểm tra DB
+                return initializeDatabase();
+            }
+
+            @Override
+            protected void done() {
+                loadingFrame.dispose(); // Tắt màn hình chờ
+                try {
+                    boolean success = get();
+                    if (success) {
+                        // Nếu thành công, mở màn hình đăng nhập
+                        new ModernLoginDialog().setVisible(true);
+                    } else {
+                        // Nếu thất bại, hiển thị lỗi và thoát
+                        JOptionPane.showMessageDialog(null,
+                                "Không thể kết nối hoặc thiết lập cơ sở dữ liệu.\nVui lòng kiểm tra lại cấu hình.",
+                                "Lỗi Khởi Động", JOptionPane.ERROR_MESSAGE);
+                        System.exit(1);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null,
+                            "Lỗi không xác định trong quá trình khởi tạo: " + e.getMessage(),
+                            "Lỗi Khởi Động", JOptionPane.ERROR_MESSAGE);
+                    System.exit(1);
+                }
+            }
+        }.execute();
+    }
+
+    /**
+     * Hàm này thực hiện tất cả các tác vụ kiểm tra và cập nhật CSDL.
+     * Chạy trên luồng nền để không làm treo giao diện.
+     * 
+     * @return true nếu thành công, false nếu có lỗi.
+     */
+    private static boolean initializeDatabase() {
         try (java.sql.Connection con = com.keycapstore.config.ConnectDB.getConnection();
                 java.sql.Statement st = con.createStatement()) {
 
@@ -372,14 +427,10 @@ public class App {
 
         } catch (Exception e) {
             e.printStackTrace();
-            javax.swing.JOptionPane.showMessageDialog(null,
-                    "Lỗi kết nối CSDL: " + e.getMessage() + "\nVui lòng kiểm tra lại file ConnectDB.java",
-                    "Lỗi Khởi Động", javax.swing.JOptionPane.ERROR_MESSAGE);
+            // Trả về false nếu có lỗi để luồng chính xử lý
+            return false;
         }
-
-        SwingUtilities.invokeLater(() -> {
-
-            new ModernLoginDialog().setVisible(true);
-        });
+        // Trả về true nếu mọi thứ OK
+        return true;
     }
 }
