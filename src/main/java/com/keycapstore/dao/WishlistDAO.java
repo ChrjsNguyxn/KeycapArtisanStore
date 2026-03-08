@@ -6,14 +6,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- *   insert(Wishlist)              → Thêm sản phẩm vào wishlist
- *   findByCustomerId(int)         → Lấy toàn bộ wishlist của khách hàng
- *   isExist(int, int)             → Kiểm tra sản phẩm đã trong wishlist chưa
- *   delete(int)                   → Xóa theo wishlist_id
- *   deleteByCustomerAndProduct    → Xóa theo customer_id + product_id
- *   deleteAllByCustomerId(int)    → Xóa toàn bộ wishlist của khách hàng
- */
 public class WishlistDAO extends BaseDAO {
 
     /**
@@ -39,6 +31,22 @@ public class WishlistDAO extends BaseDAO {
         }
         return false;
     }
+    
+    public List<Wishlist> findAll() {
+        List<Wishlist> list = new ArrayList<>();
+        String sql = "SELECT * FROM wishlists ORDER BY created_at DESC";
+
+        try (Connection con = getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) list.add(mapRow(rs));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 
     /**
      * Lấy toàn bộ wishlist của một khách hàng
@@ -62,9 +70,6 @@ public class WishlistDAO extends BaseDAO {
 
     /**
      * Kiểm tra sản phẩm đã có trong wishlist của khách hàng chưa
-     * Dùng trước khi insert để tránh trùng
-     *
-     * return true nếu đã tồn tại
      */
     public boolean isExist(int customerId, int productId) {
         String sql = "SELECT wishlist_id FROM wishlists WHERE customer_id = ? AND product_id = ?";
@@ -81,6 +86,7 @@ public class WishlistDAO extends BaseDAO {
         }
         return false;
     }
+
     /**
      * Xóa theo wishlist_id
      */
@@ -101,7 +107,6 @@ public class WishlistDAO extends BaseDAO {
 
     /**
      * Xóa theo customer_id + product_id
-     * Dùng khi người dùng bỏ tim sản phẩm mà không cần biết wishlist_id
      */
     public boolean deleteByCustomerAndProduct(int customerId, int productId) {
         String sql = "DELETE FROM wishlists WHERE customer_id = ? AND product_id = ?";
@@ -137,18 +142,13 @@ public class WishlistDAO extends BaseDAO {
         return false;
     }
 
-
     private Wishlist mapRow(ResultSet rs) throws SQLException {
         Wishlist w = new Wishlist();
-
         w.setWishlistId(rs.getInt("wishlist_id"));
         w.setCustomerId(rs.getInt("customer_id"));
         w.setProductId(rs.getInt("product_id"));
-
-
         Timestamp ts = rs.getTimestamp("created_at");
         w.setCreatedAt(ts != null ? ts.toLocalDateTime() : null);
-
         return w;
     }
 }
