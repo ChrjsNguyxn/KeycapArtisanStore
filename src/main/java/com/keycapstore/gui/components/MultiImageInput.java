@@ -31,7 +31,6 @@ public class MultiImageInput extends JPanel {
         setBackground(Color.WHITE);
         setBorder(null);
 
-        // 1. Vùng hiển thị ảnh lớn (CENTER) - Bọc trong 1 panel để căn giữa
         JPanel largeImageWrapper = new JPanel(new GridBagLayout());
         largeImageWrapper.setOpaque(false);
         lblLargeImage = new JLabel("Click [+] để thêm ảnh", SwingConstants.CENTER);
@@ -63,7 +62,7 @@ public class MultiImageInput extends JPanel {
         scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.setBorder(null);
-        scroll.setPreferredSize(new Dimension(0, THUMB_SIZE + 10)); // Chiều cao cho thumbnail + padding
+        scroll.setPreferredSize(new Dimension(0, THUMB_SIZE + 10));
 
         add(scroll, BorderLayout.SOUTH);
 
@@ -105,7 +104,6 @@ public class MultiImageInput extends JPanel {
             lblLargeImage.setText("Click [+] để thêm ảnh");
         }
 
-        // 2. Cập nhật dải thumbnail
         thumbnailContainer.removeAll();
         for (int i = 0; i < imagePaths.size(); i++) {
             String path = imagePaths.get(i);

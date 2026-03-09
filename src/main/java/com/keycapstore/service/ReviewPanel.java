@@ -17,34 +17,33 @@ import java.util.List;
 public class ReviewPanel extends JPanel {
 
     private static final Color C_PRIMARY = ThemeColor.PRIMARY_DARK;
-    private static final Color C_CREAM   = ThemeColor.CREAM_LIGHT;
-    private static final Color C_GREY    = ThemeColor.TAUPE_GREY;
-    private static final Color C_GLASS   = ThemeColor.GLASS_WHITE;
-    private static final Color C_DANGER  = ThemeColor.DANGER_RED;
-    private static final Color C_TEXT    = ThemeColor.TEXT_PRIMARY;
+    private static final Color C_CREAM = ThemeColor.CREAM_LIGHT;
+    private static final Color C_GREY = ThemeColor.TAUPE_GREY;
+    private static final Color C_GLASS = ThemeColor.GLASS_WHITE;
+    private static final Color C_DANGER = ThemeColor.DANGER_RED;
+    private static final Color C_TEXT = ThemeColor.TEXT_PRIMARY;
 
     private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 22);
     private static final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
-    private static final Font FONT_BODY  = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_BODY = new Font("Segoe UI", Font.PLAIN, 13);
 
-    private static final DateTimeFormatter DT_FMT =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final ReviewDAO reviewDAO;
 
     private int currentRatingFilter = 0;
 
     private TableModel.StyledTable table;
-    private TableModel             tableModel;
-    private SearchBox              searchBox;
+    private TableModel tableModel;
+    private SearchBox searchBox;
 
-    private JLabel    lblDetailProduct, lblDetailCustomer, lblDetailRating, lblDetailDate;
+    private JLabel lblDetailProduct, lblDetailCustomer, lblDetailRating, lblDetailDate;
     private JTextArea txtDetailComment;
     private CustomButton btnDelete, btnRefresh;
-    private JLabel    lblCount;
+    private JLabel lblCount;
 
     private JLabel[] lblStarCount = new JLabel[5];
-    private JLabel   lblAvgRating;
+    private JLabel lblAvgRating;
 
     public ReviewPanel() {
         this.reviewDAO = new ReviewDAO();
@@ -55,8 +54,8 @@ public class ReviewPanel extends JPanel {
     private void buildUI() {
         setLayout(new BorderLayout(0, 0));
         setBackground(C_CREAM);
-        add(buildHeader(),  BorderLayout.NORTH);
-        add(buildCenter(),  BorderLayout.CENTER);
+        add(buildHeader(), BorderLayout.NORTH);
+        add(buildCenter(), BorderLayout.CENTER);
     }
 
     private JPanel buildHeader() {
@@ -72,7 +71,7 @@ public class ReviewPanel extends JPanel {
 
         JPanel titleBlock = new JPanel(new GridLayout(2, 1));
         titleBlock.setOpaque(false);
-        JLabel title    = new JLabel("Quản Lý Đánh Giá");
+        JLabel title = new JLabel("Quản Lý Đánh Giá");
         JLabel subtitle = new JLabel("Kiểm duyệt & xóa review vi phạm");
         title.setFont(FONT_TITLE);
         title.setForeground(Color.WHITE);
@@ -95,7 +94,7 @@ public class ReviewPanel extends JPanel {
         });
 
         right.add(searchBox);
-        header.add(left,  BorderLayout.WEST);
+        header.add(left, BorderLayout.WEST);
         header.add(right, BorderLayout.EAST);
         return header;
     }
@@ -104,8 +103,8 @@ public class ReviewPanel extends JPanel {
         JPanel center = new JPanel(new BorderLayout(12, 12));
         center.setBackground(C_CREAM);
         center.setBorder(new EmptyBorder(14, 14, 14, 14));
-        center.add(buildStatsBar(),    BorderLayout.NORTH);
-        center.add(buildTableArea(),   BorderLayout.CENTER);
+        center.add(buildStatsBar(), BorderLayout.NORTH);
+        center.add(buildTableArea(), BorderLayout.CENTER);
         center.add(buildDetailPanel(), BorderLayout.EAST);
         return center;
     }
@@ -115,7 +114,8 @@ public class ReviewPanel extends JPanel {
         bar.setOpaque(false);
 
         JPanel roundedAvg = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(C_PRIMARY);
@@ -157,7 +157,8 @@ public class ReviewPanel extends JPanel {
 
     private JPanel createStarChip(int star) {
         JPanel chip = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 boolean active = currentRatingFilter == star;
@@ -186,7 +187,8 @@ public class ReviewPanel extends JPanel {
         lblStarCount[star - 1].setForeground(C_GREY);
 
         chip.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
+            @Override
+            public void mouseClicked(MouseEvent e) {
                 currentRatingFilter = star;
                 filterByRating(star);
                 chip.repaint();
@@ -216,26 +218,33 @@ public class ReviewPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setOpaque(false);
 
-        String[] cols = {"#ID", "Sản phẩm ID", "Khách hàng ID", "Rating", "Bình luận", "Ngày đăng"};
+        String[] cols = { "#ID", "Sản phẩm ID", "Khách hàng ID", "Rating", "Bình luận", "Ngày đăng" };
         tableModel = new TableModel(cols);
-        table      = new TableModel.StyledTable(tableModel);
+        table = new TableModel.StyledTable(tableModel);
 
         table.setRowColorizer((row, col, value) -> {
             if (col == 3 && value != null) {
                 int r;
-                try { r = Integer.parseInt(value.toString()); } catch (Exception ex) { return null; }
-                if (r <= 2) return new Color(248, 215, 218);
-                if (r == 5) return new Color(212, 237, 218);
+                try {
+                    r = Integer.parseInt(value.toString());
+                } catch (Exception ex) {
+                    return null;
+                }
+                if (r <= 2)
+                    return new Color(248, 215, 218);
+                if (r == 5)
+                    return new Color(212, 237, 218);
             }
             return null;
         });
 
-        int[] widths = {45, 90, 100, 60, 240, 110};
+        int[] widths = { 45, 90, 100, 60, 240, 110 };
         for (int i = 0; i < widths.length; i++)
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
         table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) showDetail();
+            if (!e.getValueIsAdjusting())
+                showDetail();
         });
 
         JScrollPane scroll = TableModel.createScrollPane(table);
@@ -260,10 +269,10 @@ public class ReviewPanel extends JPanel {
         panel.add(new JSeparator());
         panel.add(Box.createVerticalStrut(12));
 
-        lblDetailProduct  = buildDetailLabel("—");
+        lblDetailProduct = buildDetailLabel("—");
         lblDetailCustomer = buildDetailLabel("—");
-        lblDetailRating   = buildDetailLabel("—");
-        lblDetailDate     = buildDetailLabel("—");
+        lblDetailRating = buildDetailLabel("—");
+        lblDetailDate = buildDetailLabel("—");
 
         panel.add(wrapDetail("Sản phẩm ID:", lblDetailProduct));
         panel.add(Box.createVerticalStrut(8));
@@ -325,40 +334,45 @@ public class ReviewPanel extends JPanel {
         return panel;
     }
 
-    // ════════════════════════════════════════════════════════
-    //  DATA
-    // ════════════════════════════════════════════════════════
     private void loadAll() {
-        List<Review> list = reviewDAO.findAll();
+        List<Review> list = reviewDAO.getAll();
         populateTable(list);
         updateStats(list);
         updateCount();
     }
 
     private void filterByRating(int rating) {
-        tableModel.filterByColumn(String.valueOf(rating), 3);
+        if (rating == 0) {
+            tableModel.filter("");
+        } else {
+            tableModel.filterByColumn(String.valueOf(rating), 3);
+        }
         updateCount();
     }
 
     private void populateTable(List<Review> list) {
         tableModel.clearAll();
         for (Review r : list) {
-            tableModel.addRow(new Object[]{
-                r.getReviewId(),
-                r.getProductId(),
-                r.getCustomerId(),
-                r.getRating(),
-                truncate(r.getComment(), 60),
-                r.getCreatedAt() != null ? r.getCreatedAt().format(DT_FMT) : "-"
+            tableModel.addRow(new Object[] {
+                    r.getReviewId(),
+                    r.getProductId(),
+                    r.getCustomerId(),
+                    r.getRating(),
+                    truncate(r.getComment(), 60),
+                    r.getCreatedAt() != null ? r.getCreatedAt().format(DT_FMT) : "-"
             });
         }
     }
 
     private void updateStats(List<Review> list) {
-        if (list.isEmpty()) { lblAvgRating.setText("—"); return; }
+        if (list.isEmpty()) {
+            lblAvgRating.setText("—");
+            return;
+        }
         double sum = 0;
         for (Review r : list) {
-            if (r.getRating() >= 1 && r.getRating() <= 5) sum += r.getRating();
+            if (r.getRating() >= 1 && r.getRating() <= 5)
+                sum += r.getRating();
         }
         lblAvgRating.setText(String.format("%.1f", sum / list.size()));
     }
@@ -368,12 +382,10 @@ public class ReviewPanel extends JPanel {
             lblCount.setText(tableModel.getDisplayedRowCount() + " đánh giá");
     }
 
-    // ════════════════════════════════════════════════════════
-    //  ACTIONS
-    // ════════════════════════════════════════════════════════
     private void showDetail() {
         int row = table.getSelectedRow();
-        if (row < 0) return;
+        if (row < 0)
+            return;
 
         lblDetailProduct.setText(String.valueOf(table.getValueAt(row, 1)));
         lblDetailCustomer.setText(String.valueOf(table.getValueAt(row, 2)));
@@ -381,8 +393,10 @@ public class ReviewPanel extends JPanel {
         Object ratingObj = table.getValueAt(row, 3);
         int rating = 0;
         if (ratingObj != null) {
-            try { rating = Integer.parseInt(ratingObj.toString()); }
-            catch (NumberFormatException ignored) {}
+            try {
+                rating = Integer.parseInt(ratingObj.toString());
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         if (rating > 0) {
@@ -395,14 +409,21 @@ public class ReviewPanel extends JPanel {
 
         lblDetailDate.setText(String.valueOf(table.getValueAt(row, 5)));
 
-        int reviewId    = (int) table.getValueAt(row, 0);
-        Review full     = reviewDAO.findById(reviewId);
-        txtDetailComment.setText(full != null && full.getComment() != null ? full.getComment() : "");
+        int reviewId = (int) table.getValueAt(row, 0);
+        Review full = reviewDAO.findById(reviewId);
+        if (full != null && full.getComment() != null) {
+            txtDetailComment.setText(full.getComment());
+        } else {
+            txtDetailComment.setText("");
+        }
     }
 
     private void handleDelete() {
         int row = table.getSelectedRow();
-        if (row < 0) { showError("Vui lòng chọn review cần xóa!"); return; }
+        if (row < 0) {
+            showError("Vui lòng chọn review cần xóa!");
+            return;
+        }
         int reviewId = (int) table.getValueAt(row, 0);
 
         int confirm = JOptionPane.showConfirmDialog(this,
@@ -411,7 +432,7 @@ public class ReviewPanel extends JPanel {
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            if (reviewDAO.delete(reviewId)) {
+            if (reviewDAO.deleteReview(reviewId)) {
                 showSuccess("Đã xóa review #" + reviewId + " thành công.");
                 clearDetail();
                 loadAll();
@@ -430,7 +451,7 @@ public class ReviewPanel extends JPanel {
     }
 
     // ════════════════════════════════════════════════════════
-    //  HELPERS
+    // HELPERS
     // ════════════════════════════════════════════════════════
     private JLabel buildDetailLabel(String value) {
         JLabel lbl = new JLabel(value);
@@ -462,7 +483,8 @@ public class ReviewPanel extends JPanel {
     }
 
     private String truncate(String s, int max) {
-        if (s == null) return "";
+        if (s == null)
+            return "";
         return s.length() > max ? s.substring(0, max - 1) + "…" : s;
     }
 }

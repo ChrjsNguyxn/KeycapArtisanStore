@@ -33,7 +33,7 @@ public class ProductPanel extends JPanel implements Refreshable {
     private MultiImageInput pnlImages; // Thay thế txtImage
     private JComboBox<Category> cbCategory;
     private JTextField txtSupplier;
-    private JCheckBox chkPublic; // Thêm: Checkbox hiển thị
+    private JCheckBox chkPublic, chkFeatured; // Thêm: Checkbox hiển thị và Nổi bật
     private JButton btnAdd, btnUpdate, btnDelete, btnClear, btnExportExcel;
     private JTextField txtSearch;
     private JComboBox<String> cbSort;
@@ -134,6 +134,11 @@ public class ProductPanel extends JPanel implements Refreshable {
         chkPublic.setBackground(Color.WHITE);
         chkPublic.setSelected(true); // Mặc định là hiển thị
         formPanel.add(chkPublic, gbc);
+
+        gbc.gridy++;
+        chkFeatured = new JCheckBox("Sản phẩm nổi bật (Hiện trang chủ)");
+        chkFeatured.setBackground(Color.WHITE);
+        formPanel.add(chkFeatured, gbc);
 
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         btnPanel.setOpaque(false);
@@ -250,10 +255,15 @@ public class ProductPanel extends JPanel implements Refreshable {
                         Object supObj = model.getValueAt(row, 7);
                         txtSupplier.setText(supObj != null ? supObj.toString() : "");
 
+                        // FIX: Khai báo biến p trước khi sử dụng ở dòng dưới
+                        Product p = allProducts.stream().filter(prod -> prod.getId() == selectedId).findFirst()
+                                .orElse(null);
+
                         // Load Status
                         Object statusObj = model.getValueAt(row, 8);
                         String status = statusObj != null ? statusObj.toString() : "";
                         chkPublic.setSelected("Công khai".equals(status));
+                        chkFeatured.setSelected(p != null && p.isFeatured()); // Load trạng thái nổi bật
 
                         Object priceObj = model.getValueAt(row, 4);
                         String rawPrice = priceObj != null
@@ -274,9 +284,6 @@ public class ProductPanel extends JPanel implements Refreshable {
                         java.util.List<String> imgs = bus.getProductImages(selectedId);
 
                         // Fallback: Nếu chưa có trong bảng phụ, lấy ảnh đại diện từ bảng chính
-                        Product p = allProducts.stream().filter(prod -> prod.getId() == selectedId).findFirst()
-                                .orElse(null);
-
                         if (imgs.isEmpty() && p != null && p.getImage() != null && !p.getImage().isEmpty()) {
                             imgs.add(p.getImage());
                         }
@@ -459,6 +466,7 @@ public class ProductPanel extends JPanel implements Refreshable {
                     p.setImage(pnlImages.getCoverImage()); // Lấy ảnh từ Panel
                     p.setOrigin(txtOrigin.getText().trim());
                     p.setStatus(chkPublic.isSelected() ? "Active" : "Hidden"); // Set trạng thái
+                    p.setFeatured(chkFeatured.isSelected()); // Set nổi bật
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
@@ -548,6 +556,7 @@ public class ProductPanel extends JPanel implements Refreshable {
                     p.setImage(pnlImages.getCoverImage()); // Lấy ảnh từ Panel
                     p.setOrigin(txtOrigin.getText().trim());
                     p.setStatus(chkPublic.isSelected() ? "Active" : "Hidden"); // Set trạng thái
+                    p.setFeatured(chkFeatured.isSelected()); // Set nổi bật
 
                     if (cbCategory.getSelectedItem() != null) {
                         Category c = (Category) cbCategory.getSelectedItem();
@@ -639,6 +648,7 @@ public class ProductPanel extends JPanel implements Refreshable {
         pnlImages.setImages(new ArrayList<>()); // Reset ảnh
         txtSupplier.setText("");
         chkPublic.setSelected(true);
+        chkFeatured.setSelected(false);
         if (cbCategory.getItemCount() > 0)
             cbCategory.setSelectedIndex(0);
         selectedId = -1;

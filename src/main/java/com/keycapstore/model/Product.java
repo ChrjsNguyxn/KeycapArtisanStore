@@ -1,37 +1,37 @@
 package com.keycapstore.model;
 
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 
 public class Product {
-
     private int id;
     private String name;
     private double price;
     private int stock;
     private String image;
+    private String origin;
     private String status;
-
     private int categoryId;
     private String categoryName;
-    private String origin;
+    private int supplierId;
+    private String supplierName;
     private int makerId;
-    private int supplierId; // Mới
-    private String supplierName; // Mới
-    private String description;
+    private String makerName;
     private String profile;
     private String material;
-    private LocalDateTime createdAt;
+    private String description;
+    private Timestamp createdAt;
+    private boolean featured;
 
     public Product() {
     }
 
-    public Product(int id, String name, double price, int stock, String image, String status) {
+    public Product(int id, String name, double price, int stock, String image, String origin) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.stock = stock;
         this.image = image;
-        this.status = status;
+        this.origin = origin;
     }
 
     public int getId() {
@@ -40,14 +40,6 @@ public class Product {
 
     public void setId(int id) {
         this.id = id;
-    }
-
-    public int getProductId() {
-        return id;
-    }
-
-    public void setProductId(int productId) {
-        this.id = productId;
     }
 
     public String getName() {
@@ -74,21 +66,20 @@ public class Product {
         this.stock = stock;
     }
 
-    // Alias cho code cũ (stockQuantity -> stock)
-    public int getStockQuantity() {
-        return stock;
-    }
-
-    public void setStockQuantity(int stockQuantity) {
-        this.stock = stockQuantity;
-    }
-
     public String getImage() {
         return image;
     }
 
     public void setImage(String image) {
         this.image = image;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
     }
 
     public String getStatus() {
@@ -101,10 +92,6 @@ public class Product {
 
     public boolean isActive() {
         return "Active".equalsIgnoreCase(status);
-    }
-
-    public void setActive(boolean active) {
-        this.status = active ? "Active" : "Inactive";
     }
 
     public int getCategoryId() {
@@ -123,22 +110,6 @@ public class Product {
         this.categoryName = categoryName;
     }
 
-    public String getOrigin() {
-        return origin;
-    }
-
-    public void setOrigin(String origin) {
-        this.origin = origin;
-    }
-
-    public int getMakerId() {
-        return makerId;
-    }
-
-    public void setMakerId(int makerId) {
-        this.makerId = makerId;
-    }
-
     public int getSupplierId() {
         return supplierId;
     }
@@ -155,12 +126,20 @@ public class Product {
         this.supplierName = supplierName;
     }
 
-    public String getDescription() {
-        return description;
+    public int getMakerId() {
+        return makerId;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setMakerId(int makerId) {
+        this.makerId = makerId;
+    }
+
+    public String getMakerName() {
+        return makerName;
+    }
+
+    public void setMakerName(String makerName) {
+        this.makerName = makerName;
     }
 
     public String getProfile() {
@@ -179,11 +158,32 @@ public class Product {
         this.material = material;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public boolean isFeatured() {
+        return featured;
+    }
+
+    public void setFeatured(boolean featured) {
+        this.featured = featured;
+    }
+
+    public Timestamp getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

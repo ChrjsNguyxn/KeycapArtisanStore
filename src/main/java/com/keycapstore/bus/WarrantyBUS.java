@@ -10,13 +10,13 @@ public class WarrantyBUS {
 
     private static final int WARRANTY_MONTHS = 12;
 
-    public static final String STATUS_PENDING     = "pending";
-    public static final String STATUS_APPROVED    = "approved";
+    public static final String STATUS_PENDING = "pending";
+    public static final String STATUS_APPROVED = "approved";
     public static final String STATUS_IN_PROGRESS = "in_progress";
-    public static final String STATUS_COMPLETED   = "completed";
-    public static final String STATUS_REJECTED    = "rejected";
+    public static final String STATUS_COMPLETED = "completed";
+    public static final String STATUS_REJECTED = "rejected";
 
-    public static final String RETURN_REFUND   = "REFUND";
+    public static final String RETURN_REFUND = "REFUND";
     public static final String RETURN_EXCHANGE = "EXCHANGE";
 
     private final WarrantyDAO warrantyDAO;
@@ -24,8 +24,6 @@ public class WarrantyBUS {
     public WarrantyBUS() {
         this.warrantyDAO = new WarrantyDAO();
     }
-
-    // ── 1. TẠO YÊU CẦU ──────────────────────────────────────
 
     public BUSResult createWarrantyRequest(int orderItemId, int customerId, String issue) {
         if (orderItemId <= 0)
@@ -35,7 +33,6 @@ public class WarrantyBUS {
         if (issue == null || issue.trim().length() < 10)
             return BUSResult.fail("Mô tả vấn đề cần ít nhất 10 ký tự.");
 
-        // ── Kiểm tra thời hạn bảo hành 12 tháng ──────────────────────
         LocalDateTime orderDate = getOrderDateByItemId(orderItemId);
         if (orderDate == null)
             return BUSResult.fail("Không tìm thấy đơn hàng tương ứng với mã chi tiết #" + orderItemId + ".");
@@ -50,8 +47,6 @@ public class WarrantyBUS {
                 ? BUSResult.success("Yêu cầu bảo hành đã được gửi thành công!")
                 : BUSResult.fail("Gửi yêu cầu thất bại. Vui lòng thử lại.");
     }
-
-    // ── 2. DUYỆT (pending → approved) ───────────────────────
 
     public BUSResult approveWarranty(int warrantyId, int employeeId, String solution) {
         if (solution == null || solution.trim().isEmpty())
@@ -71,8 +66,6 @@ public class WarrantyBUS {
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
 
-    // ── 3. TỪ CHỐI (pending → rejected) ─────────────────────
-
     public BUSResult rejectWarranty(int warrantyId, int employeeId, String reason) {
         if (reason == null || reason.trim().isEmpty())
             return BUSResult.fail("Vui lòng nhập lý do từ chối.");
@@ -90,8 +83,6 @@ public class WarrantyBUS {
                 ? BUSResult.success("Đã từ chối yêu cầu bảo hành #" + warrantyId + ".")
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
-
-    // ── 4. XỬ LÝ HOÀN TIỀN / ĐỔI HÀNG (approved → in_progress) ─────────────
 
     public BUSResult processReturn(int warrantyId, int employeeId, String returnType, String note) {
         if (!RETURN_REFUND.equals(returnType) && !RETURN_EXCHANGE.equals(returnType))
@@ -116,8 +107,6 @@ public class WarrantyBUS {
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
 
-    // ── 5. HOÀN TẤT (in_progress → completed) ───────────────
-
     public BUSResult completeWarranty(int warrantyId, int employeeId, String finalNote) {
         Warranty warranty = warrantyDAO.findById(warrantyId);
         if (warranty == null)
@@ -126,7 +115,8 @@ public class WarrantyBUS {
             return BUSResult.fail("Yêu cầu phải đang ở trạng thái Đang xử lý.");
 
         String note = "[HOÀN TẤT] " + (finalNote != null && !finalNote.trim().isEmpty()
-                ? finalNote.trim() : "Đã xử lý xong.");
+                ? finalNote.trim()
+                : "Đã xử lý xong.");
 
         boolean updated = warrantyDAO.updateStatus(
                 warrantyId, STATUS_COMPLETED, employeeId, note);
@@ -136,15 +126,12 @@ public class WarrantyBUS {
                 : BUSResult.fail("Cập nhật thất bại. Vui lòng thử lại.");
     }
 
-    // ── HELPER: Lấy ngày đặt hàng từ order_item_id ───────────────────────────
-
-
     private LocalDateTime getOrderDateByItemId(int orderItemId) {
         String sql = "SELECT o.order_date FROM order_items oi "
-                   + "JOIN orders o ON oi.order_id = o.order_id "
-                   + "WHERE oi.order_item_id = ?";
+                + "JOIN orders o ON oi.order_id = o.order_id "
+                + "WHERE oi.order_item_id = ?";
         try (Connection con = com.keycapstore.config.ConnectDB.getConnection();
-             PreparedStatement pst = con.prepareStatement(sql)) {
+                PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, orderItemId);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
@@ -158,25 +145,34 @@ public class WarrantyBUS {
     }
 
     private boolean isWithinWarrantyPeriod(LocalDateTime orderDate) {
-        if (orderDate == null) return false;
+        if (orderDate == null)
+            return false;
         return LocalDateTime.now().isBefore(orderDate.plusMonths(WARRANTY_MONTHS));
     }
 
-    // ── INNER CLASS: BUSResult ───────────────────────────────
-
     public static class BUSResult {
         private final boolean success;
-        private final String  message;
+        private final String message;
 
         private BUSResult(boolean success, String message) {
             this.success = success;
             this.message = message;
         }
 
-        public static BUSResult success(String msg) { return new BUSResult(true,  msg); }
-        public static BUSResult fail(String msg)    { return new BUSResult(false, msg); }
+        public static BUSResult success(String msg) {
+            return new BUSResult(true, msg);
+        }
 
-        public boolean isSuccess()  { return success; }
-        public String  getMessage() { return message; }
+        public static BUSResult fail(String msg) {
+            return new BUSResult(false, msg);
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
     }
 }

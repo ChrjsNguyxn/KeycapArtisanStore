@@ -29,14 +29,12 @@ public class ImportManagementPanel extends JPanel implements Refreshable {
         setBackground(ThemeColor.BG_LIGHT);
         setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        // Header
         JLabel lblTitle = new JLabel("QUẢN LÝ NHẬP HÀNG (IMPORT)");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblTitle.setForeground(ThemeColor.PRIMARY);
         lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
         add(lblTitle, BorderLayout.NORTH);
 
-        // ===== TABLE =====
         model = new DefaultTableModel(new String[] {
                 "ID", "Nhà Cung Cấp", "Nhân Viên Nhập", "Ngày Nhập", "Tổng Tiền"
         }, 0);
@@ -56,7 +54,6 @@ public class ImportManagementPanel extends JPanel implements Refreshable {
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
-        // ===== BUTTON PANEL =====
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottomPanel.setBackground(ThemeColor.BG_LIGHT);
 
@@ -71,14 +68,12 @@ public class ImportManagementPanel extends JPanel implements Refreshable {
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // ===== EVENTS =====
         btnAdd.addActionListener(e -> {
             new ImportOrderGUI(this).setVisible(true);
         });
 
         btnRefresh.addActionListener(e -> loadData());
 
-        // Load data ban đầu
         try {
             loadData();
         } catch (Exception e) {

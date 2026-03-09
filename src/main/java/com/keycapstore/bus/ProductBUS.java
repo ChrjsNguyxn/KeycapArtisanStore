@@ -1,6 +1,7 @@
 package com.keycapstore.bus;
 
 import com.keycapstore.config.ConnectDB;
+import com.keycapstore.dao.WishlistDAO;
 import com.keycapstore.model.Product;
 import java.sql.*;
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ public class ProductBUS {
         String sql = "SELECT p.*, c.name AS category_name, s.name AS supplier_name FROM Product p " +
                 "LEFT JOIN categories c ON p.category_id = c.category_id " +
                 "LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id " +
-                "WHERE p.status IN ('Active', 'Hidden')"; // Admin thấy cả hàng ẩn
+                "WHERE p.status IN ('Active', 'Hidden')";
         try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
             ResultSet rs = st.executeQuery(sql);
             while (rs.next()) {
@@ -26,8 +27,13 @@ public class ProductBUS {
                 p.setCategoryId(rs.getInt("category_id"));
                 p.setCategoryName(rs.getString("category_name"));
                 p.setOrigin(rs.getString("origin"));
-                p.setSupplierName(rs.getString("supplier_name")); // Lấy tên NCC
-                p.setSupplierId(rs.getInt("supplier_id")); // Lấy ID NCC
+                p.setSupplierName(rs.getString("supplier_name"));
+                p.setSupplierId(rs.getInt("supplier_id"));
+                p.setStatus(rs.getString("status"));
+                p.setFeatured(rs.getBoolean("is_featured"));
+                p.setDescription(rs.getString("description"));
+                p.setProfile(rs.getString("profile"));
+                p.setMaterial(rs.getString("material"));
                 list.add(p);
             }
         } catch (Exception e) {
@@ -36,7 +42,6 @@ public class ProductBUS {
         return list;
     }
 
-    // Hàm mới: Chỉ lấy sản phẩm Active cho trang Mua Hàng
     public ArrayList<Product> getActiveProducts() {
         ArrayList<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, c.name AS category_name, s.name AS supplier_name FROM Product p " +
@@ -58,6 +63,11 @@ public class ProductBUS {
                 p.setOrigin(rs.getString("origin"));
                 p.setSupplierName(rs.getString("supplier_name"));
                 p.setSupplierId(rs.getInt("supplier_id"));
+                p.setStatus(rs.getString("status"));
+                p.setFeatured(rs.getBoolean("is_featured"));
+                p.setDescription(rs.getString("description"));
+                p.setProfile(rs.getString("profile"));
+                p.setMaterial(rs.getString("material"));
                 list.add(p);
             }
         } catch (Exception e) {
@@ -83,7 +93,6 @@ public class ProductBUS {
         return p;
     }
 
-    // Thêm tham số 'note'
     public int addProduct(Product p, int employeeId, double entryPrice, String note) {
         Connection con = null;
         int newProductId = -1;
@@ -91,14 +100,13 @@ public class ProductBUS {
             con = ConnectDB.getConnection();
             con.setAutoCommit(false);
 
-            String sql = "INSERT INTO Product(name, price, stock, image, category_id, origin, status, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO Product(name, price, stock, image, category_id, origin, status, supplier_id, is_featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pst.setString(1, p.getName());
             pst.setDouble(2, p.getPrice());
             pst.setInt(3, p.getStock());
             pst.setString(4, p.getImage());
 
-            // Kiểm tra nếu categoryId hợp lệ (>0) thì mới set, ngược lại set NULL
             if (p.getCategoryId() > 0) {
                 pst.setInt(5, p.getCategoryId());
             } else {
@@ -106,7 +114,7 @@ public class ProductBUS {
             }
 
             pst.setString(6, p.getOrigin());
-            pst.setString(7, p.getStatus()); // Lưu trạng thái (Active/Hidden)
+            pst.setString(7, p.getStatus());
 
             if (p.getSupplierId() > 0) {
                 pst.setInt(8, p.getSupplierId());
@@ -114,11 +122,12 @@ public class ProductBUS {
                 pst.setNull(8, java.sql.Types.INTEGER);
             }
 
+            pst.setBoolean(9, p.isFeatured());
+
             if (pst.executeUpdate() > 0) {
                 ResultSet rs = pst.getGeneratedKeys();
                 if (rs.next()) {
                     newProductId = rs.getInt(1);
-                    // Lưu vào lịch sử nhập kho với ghi chú
                     String entrySql = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, entry_date, note) VALUES (?, ?, ?, ?, GETDATE(), ?)";
                     PreparedStatement entryPst = con.prepareStatement(entrySql);
                     entryPst.setInt(1, newProductId);
@@ -151,7 +160,6 @@ public class ProductBUS {
         return newProductId;
     }
 
-    // Thêm tham số 'note'
     public boolean updateProduct(Product p, int employeeId, double entryPrice, String note) {
         Connection con = null;
         try {
@@ -163,7 +171,7 @@ public class ProductBUS {
                 return false;
             }
 
-            String sql = "UPDATE Product SET name=?, price=?, stock=?, image=?, category_id=?, origin=?, status=?, supplier_id=? WHERE product_id=?";
+            String sql = "UPDATE Product SET name=?, price=?, stock=?, image=?, category_id=?, origin=?, status=?, supplier_id=?, is_featured=? WHERE product_id=?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setString(1, p.getName());
             pst.setDouble(2, p.getPrice());
@@ -177,24 +185,24 @@ public class ProductBUS {
             }
 
             pst.setString(6, p.getOrigin());
-            pst.setString(7, p.getStatus()); // Cập nhật trạng thái
+            pst.setString(7, p.getStatus());
 
             if (p.getSupplierId() > 0) {
                 pst.setInt(8, p.getSupplierId());
             } else {
                 pst.setNull(8, java.sql.Types.INTEGER);
             }
-            pst.setInt(9, p.getId());
+            pst.setBoolean(9, p.isFeatured());
+            pst.setInt(10, p.getId());
 
             if (pst.executeUpdate() > 0) {
-                // Chỉ ghi vào lịch sử nếu số lượng thực sự thay đổi
                 if (p.getStock() != oldProduct.getStock()) {
                     int quantityAdded = p.getStock() - oldProduct.getStock();
                     String entrySql = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, entry_date, note) VALUES (?, ?, ?, ?, GETDATE(), ?)";
                     PreparedStatement entryPst = con.prepareStatement(entrySql);
                     entryPst.setInt(1, p.getId());
                     entryPst.setInt(2, employeeId);
-                    entryPst.setInt(3, quantityAdded); // Số âm nếu giảm, dương nếu tăng
+                    entryPst.setInt(3, quantityAdded);
                     entryPst.setDouble(4, entryPrice);
                     entryPst.setString(5, note);
                     entryPst.executeUpdate();
@@ -204,7 +212,7 @@ public class ProductBUS {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Lỗi SQL khi cập nhật sản phẩm: " + e.getMessage()); // In lỗi rõ ràng ra Console
+            System.err.println("Lỗi SQL khi cập nhật sản phẩm: " + e.getMessage());
             try {
                 if (con != null) {
                     con.rollback();
@@ -223,14 +231,12 @@ public class ProductBUS {
         return false;
     }
 
-    // Cập nhật hàm xóa để ghi log
     public boolean deleteProduct(int productId, int employeeId, String note) {
         Connection con = null;
         try {
             con = ConnectDB.getConnection();
             con.setAutoCommit(false);
 
-            // Lấy thông tin cũ để biết số lượng tồn kho hiện tại
             Product oldProduct = getProductById(productId);
             if (oldProduct == null)
                 return false;
@@ -240,12 +246,11 @@ public class ProductBUS {
             pst.setInt(1, productId);
 
             if (pst.executeUpdate() > 0) {
-                // Ghi log xuất kho toàn bộ số lượng còn lại
                 String entrySql = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, entry_date, note) VALUES (?, ?, ?, ?, GETDATE(), ?)";
                 PreparedStatement entryPst = con.prepareStatement(entrySql);
                 entryPst.setInt(1, productId);
                 entryPst.setInt(2, employeeId);
-                entryPst.setInt(3, -oldProduct.getStock()); // Trừ hết tồn kho
+                entryPst.setInt(3, -oldProduct.getStock());
                 entryPst.setDouble(4, 0);
                 entryPst.setString(5, "Xóa sản phẩm: " + note);
                 entryPst.executeUpdate();
@@ -272,7 +277,6 @@ public class ProductBUS {
         return false;
     }
 
-    // Hàm lấy giá nhập gần nhất từ lịch sử nhập kho (StockEntry)
     public double getLatestEntryPrice(int productId) {
         double price = 0;
         String sql = "SELECT TOP 1 entry_price FROM StockEntry WHERE product_id = ? ORDER BY entry_date DESC";
@@ -288,9 +292,6 @@ public class ProductBUS {
         return price;
     }
 
-    // --- MỚI: XỬ LÝ NHIỀU ẢNH ---
-
-    // Lưu danh sách ảnh vào bảng product_images
     public void saveProductImages(int productId, java.util.List<String> images) {
         if (images == null || images.isEmpty())
             return;
@@ -299,13 +300,11 @@ public class ProductBUS {
         String sqlIns = "INSERT INTO product_images (product_id, image_path) VALUES (?, ?)";
 
         try (Connection con = ConnectDB.getConnection()) {
-            // 1. Xóa ảnh cũ (nếu update)
             try (PreparedStatement pstDel = con.prepareStatement(sqlDel)) {
                 pstDel.setInt(1, productId);
                 pstDel.executeUpdate();
             }
 
-            // 2. Thêm ảnh mới
             try (PreparedStatement pstIns = con.prepareStatement(sqlIns)) {
                 for (String path : images) {
                     pstIns.setInt(1, productId);
@@ -318,7 +317,6 @@ public class ProductBUS {
         }
     }
 
-    // Hàm lấy danh sách ảnh của sản phẩm để hiển thị lên Panel
     public java.util.List<String> getProductImages(int productId) {
         java.util.List<String> list = new ArrayList<>();
         String sql = "SELECT image_path FROM product_images WHERE product_id = ?";
@@ -335,5 +333,21 @@ public class ProductBUS {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public java.util.List<Product> getWishlistProducts(int customerId) {
+        java.util.List<Product> result = new ArrayList<>();
+        WishlistDAO wishlistDAO = new WishlistDAO();
+        java.util.List<com.keycapstore.model.Wishlist> wishlists = wishlistDAO.findByCustomerId(customerId);
+
+        ArrayList<Product> allProducts = getAllProducts();
+
+        for (com.keycapstore.model.Wishlist w : wishlists) {
+            allProducts.stream()
+                    .filter(p -> p.getId() == w.getProductId())
+                    .findFirst()
+                    .ifPresent(result::add);
+        }
+        return result;
     }
 }

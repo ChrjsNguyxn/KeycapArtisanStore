@@ -6,6 +6,7 @@ import com.keycapstore.utils.MenuButton;
 import com.keycapstore.utils.ThemeColor;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.function.Consumer;
 import javax.swing.*;
 
 public class MainFrame extends JFrame {
@@ -18,8 +19,9 @@ public class MainFrame extends JFrame {
 
     private MenuButton btnDashboard, btnMuaHang, btnProduct, btnEmployee, btnCustomer, btnSales, btnLogout, btnRefresh,
             btnHistory,
-            btnStockHistory, btnImportManage, btnVoucher, btnShipping, btnCart, btnMyOrders; // Thêm btnCart,
-                                                                                             // btnMyOrders
+            btnStockHistory, btnImportManage, btnVoucher, btnShipping, btnCart, btnMyOrders, btnWishlist; // Thêm
+                                                                                                          // btnWishlist
+    // btnMyOrders
 
     public MainFrame(Object user) {
         this.currentUser = user;
@@ -38,7 +40,11 @@ public class MainFrame extends JFrame {
             userName = ((Customer) currentUser).getFullName();
         }
 
-        setTitle("Keyforge Artisan Manager - Xin chào: " + userName);
+        if (currentUser instanceof Customer) {
+            setTitle("Keyforge Artisan - Xin chào: " + userName);
+        } else {
+            setTitle("Keyforge Artisan Manager - Xin chào: " + userName);
+        }
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -70,6 +76,7 @@ public class MainFrame extends JFrame {
         btnEmployee = createMenuBtn("Nhân Sự", "employees.png");
         btnCart = createMenuBtn("Giỏ Hàng", "sales.png"); // Nút mới cho khách
         btnMyOrders = createMenuBtn("Lịch Sử Mua", "invoice.png"); // Nút mới cho khách
+        btnWishlist = createMenuBtn("Yêu Thích", "wishlist.png"); // Nút Yêu thích
         btnRefresh = createMenuBtn("Làm Mới", "reload.png");
         btnLogout = createMenuBtn("Đăng Xuất", "exit.png");
 
@@ -84,6 +91,7 @@ public class MainFrame extends JFrame {
             sidebarPanel.add(btnMuaHang); // Trang chủ
             sidebarPanel.add(btnCart); // Giỏ hàng
             sidebarPanel.add(btnMyOrders);// Lịch sử mua cá nhân
+            sidebarPanel.add(btnWishlist); // Yêu thích
         }
 
         // 2. NHÂN VIÊN (Employee)
@@ -137,6 +145,7 @@ public class MainFrame extends JFrame {
         btnVoucher.addActionListener(e -> navigateTo("VOUCHER"));
         btnCart.addActionListener(e -> navigateTo("CART"));
         btnMyOrders.addActionListener(e -> navigateTo("MY_ORDERS"));
+        btnWishlist.addActionListener(e -> navigateTo("WISHLIST"));
         btnRefresh.addActionListener(e -> refreshCurrentPage());
         btnLogout.addActionListener(e -> logout());
 
@@ -185,9 +194,11 @@ public class MainFrame extends JFrame {
             case "MUAHANG":
                 return new MuaHangPanel(currentUser, this::navigateTo);
             case "CART":
-                return new CartPanel();
+                return new CartPanel(currentUser, this::navigateTo);
             case "MY_ORDERS":
-                return new MyOrdersPanel();
+                return new MyOrdersPanel(currentUser);
+            case "WISHLIST":
+                return new WishlistPanel(currentUser, this::navigateTo);
             case "HISTORY":
                 return new OrderHistoryPanel();
             case "SHIPPING":
@@ -246,6 +257,8 @@ public class MainFrame extends JFrame {
                 return btnCart;
             case "MY_ORDERS":
                 return btnMyOrders;
+            case "WISHLIST":
+                return btnWishlist;
             default:
                 return null;
         }
@@ -298,6 +311,7 @@ public class MainFrame extends JFrame {
         btnVoucher.setSelected(false);
         btnCart.setSelected(false);
         btnMyOrders.setSelected(false);
+        btnWishlist.setSelected(false);
         btnRefresh.setSelected(false);
 
         if (activeBtn != null)

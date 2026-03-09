@@ -10,7 +10,6 @@ import java.util.List;
 
 public class ImportOrderDAO {
 
-    // ================= INSERT =================
     public boolean insertImportOrder(ImportOrderDTO order, List<ImportOrderItemDTO> items) {
 
         String insertOrderSQL = "INSERT INTO import_orders (supplier_id, employee_id, total_cost, note) VALUES (?, ?, ?, ?)";
@@ -19,7 +18,6 @@ public class ImportOrderDAO {
 
         String updateStockSQL = "UPDATE Product SET stock = stock + ? WHERE product_id = ?";
 
-        // SQL để ghi vào lịch sử nhập kho (StockEntryHistoryPanel mới thấy được)
         String insertHistorySQL = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, note) VALUES (?, ?, ?, ?, ?)";
 
         Connection conn = null;
@@ -30,7 +28,6 @@ public class ImportOrderDAO {
 
             int importId;
 
-            // Insert Order
             try (PreparedStatement psOrder = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS)) {
 
                 psOrder.setInt(1, order.getSupplierId());
@@ -49,7 +46,6 @@ public class ImportOrderDAO {
                 }
             }
 
-            // Insert Items + Update Stock
             for (ImportOrderItemDTO item : items) {
 
                 try (PreparedStatement psItem = conn.prepareStatement(insertItemSQL)) {
@@ -70,7 +66,6 @@ public class ImportOrderDAO {
                     psStock.executeUpdate();
                 }
 
-                // Insert Stock History (Để hiện bên tab Lịch sử nhập)
                 try (PreparedStatement psHist = conn.prepareStatement(insertHistorySQL)) {
                     psHist.setInt(1, item.getProductId());
                     psHist.setInt(2, order.getEmployeeId());
@@ -106,7 +101,6 @@ public class ImportOrderDAO {
         }
     }
 
-    // ================= DELETE =================
     public boolean deleteImportOrder(int importId) {
 
         String getItemsSQL = "SELECT product_id, quantity FROM import_order_items WHERE import_id = ?";
@@ -123,7 +117,6 @@ public class ImportOrderDAO {
             conn = ConnectDB.getConnection();
             conn.setAutoCommit(false);
 
-            // Lấy danh sách item để rollback stock
             List<ImportOrderItemDTO> items = new ArrayList<>();
 
             try (PreparedStatement ps = conn.prepareStatement(getItemsSQL)) {
@@ -138,7 +131,6 @@ public class ImportOrderDAO {
                 }
             }
 
-            // Rollback stock
             for (ImportOrderItemDTO item : items) {
                 try (PreparedStatement psStock = conn.prepareStatement(rollbackStockSQL)) {
                     psStock.setInt(1, item.getQuantity());
@@ -147,13 +139,11 @@ public class ImportOrderDAO {
                 }
             }
 
-            // Delete items
             try (PreparedStatement ps = conn.prepareStatement(deleteItemsSQL)) {
                 ps.setInt(1, importId);
                 ps.executeUpdate();
             }
 
-            // Delete order
             try (PreparedStatement ps = conn.prepareStatement(deleteOrderSQL)) {
                 ps.setInt(1, importId);
                 ps.executeUpdate();
@@ -184,7 +174,6 @@ public class ImportOrderDAO {
         }
     }
 
-    // ================= GET ALL =================
     public List<ImportOrderDTO> getAll() {
 
         List<ImportOrderDTO> list = new ArrayList<>();

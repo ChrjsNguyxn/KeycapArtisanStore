@@ -8,10 +8,11 @@ public class Order {
     private int employeeId;
     private int customerId;
     private double totalAmount;
-    private String status; // PENDING, PAID, CANCELLED
+    private String status;
     private LocalDateTime createdAt;
 
-    public Order() {}
+    public Order() {
+    }
 
     public Order(int employeeId, int customerId, double totalAmount, String status) {
         this.employeeId = employeeId;
@@ -20,7 +21,8 @@ public class Order {
         this.status = status;
     }
 
-    public Order(int orderId, int employeeId, int customerId, double totalAmount, String status, LocalDateTime createdAt) {
+    public Order(int orderId, int employeeId, int customerId, double totalAmount, String status,
+            LocalDateTime createdAt) {
         this.orderId = orderId;
         this.employeeId = employeeId;
         this.customerId = customerId;
@@ -28,8 +30,6 @@ public class Order {
         this.status = status;
         this.createdAt = createdAt;
     }
-
-    // getters & setters
 
     public int getOrderId() {
         return orderId;

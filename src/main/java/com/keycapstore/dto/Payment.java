@@ -7,11 +7,13 @@ public class Payment {
     private int paymentId;
     private int orderId;
     private double amount;
-    private String paymentMethod; // CASH, CARD, TRANSFER
-    private String paymentStatus; // PAID, FAILED
+    private String paymentMethod;
+    private String paymentStatus;
     private LocalDateTime paymentDate;
 
-    public Payment() {}
+    public Payment() {
+    }
+
     public Payment(int orderId, double amount, String paymentMethod, String paymentStatus) {
         this.orderId = orderId;
         this.amount = amount;
@@ -19,5 +21,4 @@ public class Payment {
         this.paymentStatus = paymentStatus;
     }
 
-    // getters & setters
 }

@@ -19,7 +19,7 @@ public class OrderDAO {
 
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
-                return rs.getInt(1); // trả về orderId
+                return rs.getInt(1);
             }
         }
 

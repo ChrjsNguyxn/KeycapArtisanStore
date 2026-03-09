@@ -158,6 +158,7 @@ public class SalesPanel extends JPanel implements Refreshable {
                 return false;
             }
         };
+        // FIX: Khởi tạo tbCart trước khi set thuộc tính (Tránh lỗi dòng 148)
         tbCart = new JTable(modCart);
         tbCart.setRowHeight(30);
         tbCart.getTableHeader().setBackground(ThemeColor.INFO);
@@ -759,7 +760,10 @@ public class SalesPanel extends JPanel implements Refreshable {
                 // --- TỰ ĐỘNG IN HÓA ĐƠN PDF ---
                 try {
                     // Tạo ID hóa đơn tạm thời cho tên file và nội dung
-                    String invoiceIdForPdf = "HD" + System.currentTimeMillis();
+                    // FIX: Dòng 806 - Tạo ID ngắn gọn hơn hoặc dùng ID thật nếu có
+                    String timeStamp = new java.text.SimpleDateFormat("yyMMddHHmm").format(new java.util.Date());
+                    // Sanitize filename: Xóa khoảng trắng và ký tự đặc biệt không hợp lệ
+                    String invoiceIdForPdf = "HD_" + timeStamp + "_" + cName.replaceAll("[\\\\/:*?\"<>|\\s]", "");
                     String totalText = lblFinalTotal.getText(); // "TỔNG PHẢI TRẢ: 1,500,000 ₫"
 
                     // Lấy phần số tiền và đơn vị

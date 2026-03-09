@@ -12,9 +12,9 @@ import javax.mail.internet.MimeMessage;
 
 public class EmailSender {
 
-    private static final String EMAIL_GUI = "keyforgeartisan@gmail.com";
+    private static final String EMAIL_GUI = "trymring@gmail.com";
 
-    private static final String MAT_KHAU_UNG_DUNG = "kxtf motw ykxr ojog";
+    private static final String MAT_KHAU_UNG_DUNG = "mlvp oqsr arpf nmdy";
 
     public static String generateOTP() {
         Random rnd = new Random();

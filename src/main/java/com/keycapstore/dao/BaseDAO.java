@@ -7,12 +7,10 @@ import com.keycapstore.config.ConnectDB;
 
 public abstract class BaseDAO {
 
-    // Lay ket noi CSDL
     protected Connection getConnection() {
         return ConnectDB.getConnection();
     }
 
-    // Dong tai nguyen an toan
     protected void closeQuietly(Connection conn, Statement stmt, ResultSet rs) {
         try {
             if (rs != null)

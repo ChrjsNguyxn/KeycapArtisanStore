@@ -9,7 +9,6 @@ public class EmployeeBUS {
 
     public Employee login(String user, String pass) {
         Employee emp = null;
-        // Note: 'pin_code' is assumed to exist in DB based on Model requirements
         String sql = "SELECT * FROM employees WHERE username = ? AND password = ?";
 
         try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
@@ -92,10 +91,8 @@ public class EmployeeBUS {
 
     public boolean deleteEmployee(int id) {
         if (id == 1)
-            return false; // Bao ve tai khoan Super Admin (ID 1)
+            return false;
 
-        // Đổi tên username (thêm suffix) để giải phóng tên đăng nhập, cho phép tạo lại
-        // sau này
         String sql = "UPDATE employees SET status = 'quit', username = username + '_quit_' + CAST(employee_id AS VARCHAR) WHERE employee_id = ?";
         try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, id);
@@ -107,7 +104,7 @@ public class EmployeeBUS {
     }
 
     public boolean updateEmployee(Employee emp) {
-        // Chi cap nhat mat khau neu co nhap gia tri moi (khong rong)
+
         boolean updatePass = emp.getPassword() != null && !emp.getPassword().trim().isEmpty();
 
         StringBuilder sql = new StringBuilder(
@@ -137,7 +134,6 @@ public class EmployeeBUS {
         return false;
     }
 
-    // Hàm tự động sửa lỗi các tài khoản đã xóa nhưng chưa đổi tên
     public void fixGhostAccounts() {
         String sql = "UPDATE employees SET username = username + '_quit_' + CAST(employee_id AS VARCHAR) WHERE status = 'quit' AND username NOT LIKE '%_quit_%'";
         try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {

@@ -9,9 +9,6 @@ import java.util.List;
 
 public class SupplierDAO {
 
-    // =========================
-    // Lấy toàn bộ supplier
-    // =========================
     public List<SupplierDTO> getAll() {
 
         List<SupplierDTO> list = new ArrayList<>();
@@ -38,9 +35,6 @@ public class SupplierDAO {
         return list;
     }
 
-    // =========================
-    // Thêm supplier
-    // =========================
     public boolean insert(SupplierDTO s) {
 
         String sql = "INSERT INTO suppliers (name, phone, address, email) VALUES (?, ?, ?, ?)";
@@ -62,9 +56,6 @@ public class SupplierDAO {
         return false;
     }
 
-    // =========================
-    // Cập nhật supplier
-    // =========================
     public boolean update(SupplierDTO s) {
 
         String sql = "UPDATE suppliers SET name=?, phone=?, address=?, email=? WHERE supplier_id=?";
@@ -87,9 +78,6 @@ public class SupplierDAO {
         return false;
     }
 
-    // =========================
-    // Xóa supplier
-    // =========================
     public boolean delete(int id) {
 
         String sql = "DELETE FROM suppliers WHERE supplier_id=?";
@@ -107,9 +95,6 @@ public class SupplierDAO {
         return false;
     }
 
-    // =========================
-    // Tìm supplier theo ID
-    // =========================
     public SupplierDTO findById(int id) {
 
         String sql = "SELECT * FROM suppliers WHERE supplier_id=?";

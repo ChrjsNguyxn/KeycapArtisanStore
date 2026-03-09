@@ -4,33 +4,32 @@ import java.time.LocalDateTime;
 
 public class Review {
 
-    private int           reviewId;
-    private int           customerId;
-    private int           productId;
-    private int           rating;
-    private String        comment;
+    private int reviewId;
+    private int customerId;
+    private int productId;
+    private int rating;
+    private String comment;
     private LocalDateTime createdAt;
 
-
-    public Review() {}
-
-    public Review(int reviewId, int customerId, int productId,
-                  int rating, String comment, LocalDateTime createdAt) {
-        this.reviewId   = reviewId;
-        this.customerId = customerId;
-        this.productId  = productId;
-        this.rating     = rating;
-        this.comment    = comment;
-        this.createdAt  = createdAt;
+    public Review() {
     }
 
-    /** Dùng khi khách hàng gửi đánh giá mới */
+    public Review(int reviewId, int customerId, int productId,
+            int rating, String comment, LocalDateTime createdAt) {
+        this.reviewId = reviewId;
+        this.customerId = customerId;
+        this.productId = productId;
+        this.rating = rating;
+        this.comment = comment;
+        this.createdAt = createdAt;
+    }
+
     public Review(int customerId, int productId, int rating, String comment) {
         this.customerId = customerId;
-        this.productId  = productId;
-        this.rating     = rating;
-        this.comment    = comment;
-        this.createdAt  = LocalDateTime.now();
+        this.productId = productId;
+        this.rating = rating;
+        this.comment = comment;
+        this.createdAt = LocalDateTime.now();
     }
 
     public int getReviewId() {

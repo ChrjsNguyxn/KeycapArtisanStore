@@ -8,7 +8,8 @@ public class OrderItem {
     private double unitPrice;
     private double subtotal;
 
-    public OrderItem() {}
+    public OrderItem() {
+    }
 
     public OrderItem(int productId, int quantity, double unitPrice) {
         this.productId = productId;
@@ -25,8 +26,6 @@ public class OrderItem {
         this.unitPrice = unitPrice;
         this.subtotal = quantity * unitPrice;
     }
-
-    // getters & setters
 
     public int getOrderItemId() {
         return orderItemId;

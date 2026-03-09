@@ -28,7 +28,7 @@ public class ShippingBUS {
         try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
             ResultSet rs = st.executeQuery(sql);
             while (rs.next()) {
-                // FIX: Xử lý trường hợp ship_method bị null (do ID = 0 hoặc chưa có trong DB)
+
                 String method = rs.getString("ship_method");
                 if (method == null || method.isEmpty()) {
                     method = "Giao hàng tiêu chuẩn";
@@ -41,7 +41,7 @@ public class ShippingBUS {
                         rs.getString("shipping_address"),
                         rs.getDouble("total_amount"),
                         rs.getString("shipping_status"),
-                        method, // Sử dụng biến đã xử lý null
+                        method,
                         rs.getTimestamp("created_at"),
                         rs.getString("tracking_number")));
             }

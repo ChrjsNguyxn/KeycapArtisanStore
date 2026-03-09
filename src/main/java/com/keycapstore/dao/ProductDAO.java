@@ -9,7 +9,6 @@ import java.util.List;
 
 public class ProductDAO {
 
-    // ===== LẤY TẤT CẢ (JOIN category + maker) =====
     public List<ProductDTO> getAll() {
         List<ProductDTO> list = new ArrayList<>();
 
@@ -34,18 +33,17 @@ public class ProductDAO {
                         rs.getString("name"),
                         rs.getString("description"),
                         rs.getDouble("price"),
-                        rs.getInt("stock"), // Sửa: stock_quantity -> stock
+                        rs.getInt("stock"),
                         rs.getString("profile"),
                         rs.getString("material"),
-                        "Active".equalsIgnoreCase(rs.getString("status")), // Sửa: is_active -> status
+                        "Active".equalsIgnoreCase(rs.getString("status")),
                         rs.getTimestamp("created_at"));
 
                 p.setCategoryName(rs.getString("category_name"));
                 p.setMakerName(rs.getString("maker_name"));
                 p.setOrigin(rs.getString("origin"));
-                p.setStatus(rs.getString("status")); // Map status từ DB
+                p.setStatus(rs.getString("status"));
 
-                // Map đúng vào SupplierName
                 if (rs.getString("supplier_name") != null) {
                     p.setSupplierName(rs.getString("supplier_name"));
                 }
@@ -60,7 +58,6 @@ public class ProductDAO {
         return list;
     }
 
-    // ===== INSERT =====
     public boolean insert(ProductDTO p) {
 
         String sql = """
@@ -78,18 +75,17 @@ public class ProductDAO {
             ps.setString(3, p.getName());
             ps.setString(4, p.getDescription());
             ps.setDouble(5, p.getPrice());
-            ps.setInt(6, p.getStockQuantity()); // Map DTO stockQuantity -> DB stock
+            ps.setInt(6, p.getStockQuantity());
             ps.setString(7, p.getProfile());
             ps.setString(8, p.getMaterial());
 
-            // 🔥 ƯU TIÊN STATUS TỪ DTO, NẾU KHÔNG CÓ MỚI TỰ ĐỘNG
             String status = p.getStatus();
             if (status == null || status.isEmpty()) {
                 status = p.getStockQuantity() > 0 ? "Active" : "Inactive";
             }
             ps.setString(9, status);
 
-            ps.setInt(10, p.getSupplierId() > 0 ? p.getSupplierId() : 1); // Default supplier
+            ps.setInt(10, p.getSupplierId() > 0 ? p.getSupplierId() : 1);
             ps.setString(11, p.getOrigin());
 
             return ps.executeUpdate() > 0;
@@ -101,7 +97,6 @@ public class ProductDAO {
         return false;
     }
 
-    // ===== TÌM THEO TÊN (Dùng cho Import) =====
     public ProductDTO findByName(String name) {
         String sql = "SELECT * FROM Product WHERE name = ?";
         try (Connection conn = ConnectDB.getConnection();
@@ -112,7 +107,7 @@ public class ProductDAO {
                 ProductDTO p = new ProductDTO();
                 p.setProductId(rs.getInt("product_id"));
                 p.setName(rs.getString("name"));
-                p.setStockQuantity(rs.getInt("stock")); // Sửa: stock_quantity -> stock
+                p.setStockQuantity(rs.getInt("stock"));
                 p.setStatus(rs.getString("status"));
                 return p;
             }
@@ -122,7 +117,6 @@ public class ProductDAO {
         return null;
     }
 
-    // ===== UPDATE =====
     public boolean update(ProductDTO p) {
 
         String sql = """
@@ -140,11 +134,10 @@ public class ProductDAO {
             ps.setString(3, p.getName());
             ps.setString(4, p.getDescription());
             ps.setDouble(5, p.getPrice());
-            ps.setInt(6, p.getStockQuantity()); // Map DTO -> DB stock
+            ps.setInt(6, p.getStockQuantity());
             ps.setString(7, p.getProfile());
             ps.setString(8, p.getMaterial());
 
-            // 🔥 ƯU TIÊN STATUS TỪ DTO
             String status = p.getStatus();
             if (status == null || status.isEmpty()) {
                 status = p.getStockQuantity() > 0 ? "Active" : "Inactive";
@@ -163,7 +156,6 @@ public class ProductDAO {
         return false;
     }
 
-    // ===== DELETE =====
     public boolean delete(int id) {
 
         String sql = "DELETE FROM Product WHERE product_id=?";

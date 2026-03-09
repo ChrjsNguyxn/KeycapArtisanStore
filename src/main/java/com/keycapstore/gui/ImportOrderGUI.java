@@ -42,16 +42,12 @@ public class ImportOrderGUI extends JFrame {
     private SupplierDAO supplierDAO = new SupplierDAO();
     private EmployeeDAO employeeDAO = new EmployeeDAO();
     private ProductDAO productDAO = new ProductDAO();
-    private ProductBUS productBUS = new ProductBUS(); // Thêm BUS để lưu ảnh
+    private ProductBUS productBUS = new ProductBUS();
 
-    // Sửa: Parent là ImportManagementPanel (Panel mới tạo)
     private ImportManagementPanel parent;
 
-    // Thay thế txtImage bằng MultiImageInput
     private MultiImageInput pnlImages;
 
-    // ===== COLOR THEME =====
-    // Sử dụng ThemeColor chung của dự án
     private final Color PRIMARY_DARK = ThemeColor.PRIMARY;
     private final Color CREAM_LIGHT = ThemeColor.BG_LIGHT;
     private final Color TEXT_PRIMARY = Color.BLACK;
@@ -63,7 +59,7 @@ public class ImportOrderGUI extends JFrame {
         setTitle("TẠO ĐƠN NHẬP HÀNG");
         setSize(900, 600);
         setLocationRelativeTo(null);
-        // setDefaultCloseOperation(EXIT_ON_CLOSE); // Bỏ dòng này để không tắt cả app
+
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
 
