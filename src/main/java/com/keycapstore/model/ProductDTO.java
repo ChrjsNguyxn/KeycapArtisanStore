@@ -11,7 +11,9 @@ public class ProductDTO {
     private double price;
     private int stockQuantity;
     private String profile;
+
     private String image; // Thêm trường image
+
     private String material;
     private boolean isActive;
     private Timestamp createdAt;
@@ -184,10 +186,5 @@ public class ProductDTO {
 
     public void setStatus(String status) {
         this.status = status;
-    }
-
-    @Override
-    public String toString() {
-        return name;
     }
 }

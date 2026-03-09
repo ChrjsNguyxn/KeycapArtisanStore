@@ -32,6 +32,7 @@ public class ReviewPanel extends JPanel {
     private final ReviewDAO reviewDAO;
 
     private int currentRatingFilter = 0;
+    private List<Review> currentReviewList;
 
     private TableModel.StyledTable table;
     private TableModel tableModel;
@@ -335,9 +336,9 @@ public class ReviewPanel extends JPanel {
     }
 
     private void loadAll() {
-        List<Review> list = reviewDAO.getAll();
-        populateTable(list);
-        updateStats(list);
+        currentReviewList = reviewDAO.findAll();
+        populateTable(currentReviewList);
+        updateStats(currentReviewList);
         updateCount();
     }
 
@@ -410,7 +411,15 @@ public class ReviewPanel extends JPanel {
         lblDetailDate.setText(String.valueOf(table.getValueAt(row, 5)));
 
         int reviewId = (int) table.getValueAt(row, 0);
-        Review full = reviewDAO.findById(reviewId);
+        Review full = null;
+        if (currentReviewList != null) {
+            for (Review r : currentReviewList) {
+                if (r.getReviewId() == reviewId) {
+                    full = r;
+                    break;
+                }
+            }
+        }
         if (full != null && full.getComment() != null) {
             txtDetailComment.setText(full.getComment());
         } else {
@@ -432,7 +441,7 @@ public class ReviewPanel extends JPanel {
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            if (reviewDAO.deleteReview(reviewId)) {
+            if (reviewDAO.delete(reviewId)) {
                 showSuccess("Đã xóa review #" + reviewId + " thành công.");
                 clearDetail();
                 loadAll();

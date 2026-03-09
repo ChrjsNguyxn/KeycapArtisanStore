@@ -21,8 +21,6 @@ public class ImportOrderDTO {
         this.note = note;
     }
 
-    // ================= GETTER & SETTER =================
-
     public int getImportId() {
         return importId;
     }
