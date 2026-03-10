@@ -98,8 +98,10 @@ public class Employee {
 
     public void setPinCode(String pinCode) {
         this.pinCode = pinCode;
-    }@Override
-public String toString() {
-    return employeeId + " - " + fullName;
-}
+    }
+
+    @Override
+    public String toString() {
+        return employeeId + " - " + fullName;
+    }
 }

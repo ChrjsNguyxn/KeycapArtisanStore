@@ -196,7 +196,10 @@ public class ProductBUS {
             pst.setInt(10, p.getId());
 
             if (pst.executeUpdate() > 0) {
-                if (p.getStock() != oldProduct.getStock()) {
+                double currentLatestPrice = getLatestEntryPrice(p.getId());
+                boolean priceChanged = Math.abs(currentLatestPrice - entryPrice) > 0.001;
+
+                if (p.getStock() != oldProduct.getStock() || priceChanged) {
                     int quantityAdded = p.getStock() - oldProduct.getStock();
                     String entrySql = "INSERT INTO StockEntry (product_id, employee_id, quantity_added, entry_price, entry_date, note) VALUES (?, ?, ?, ?, GETDATE(), ?)";
                     PreparedStatement entryPst = con.prepareStatement(entrySql);
@@ -279,7 +282,7 @@ public class ProductBUS {
 
     public double getLatestEntryPrice(int productId) {
         double price = 0;
-        String sql = "SELECT TOP 1 entry_price FROM StockEntry WHERE product_id = ? ORDER BY entry_date DESC";
+        String sql = "SELECT TOP 1 entry_price FROM StockEntry WHERE product_id = ? ORDER BY entry_id DESC";
         try (Connection con = ConnectDB.getConnection(); PreparedStatement pst = con.prepareStatement(sql)) {
             pst.setInt(1, productId);
             ResultSet rs = pst.executeQuery();
