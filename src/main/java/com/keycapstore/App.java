@@ -17,7 +17,7 @@ public class App {
         try {
             UIManager.setLookAndFeel("com.formdev.flatlaf.FlatLightLaf");
         } catch (Exception e) {
-            // Nếu không có thư viện FlatLaf, ứng dụng sẽ dùng giao diện mặc định
+
         }
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 14));
 
