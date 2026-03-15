@@ -3,6 +3,7 @@ package com.keycapstore.gui;
 import com.keycapstore.bus.InvoiceBUS;
 import com.keycapstore.bus.ProductBUS;
 import com.keycapstore.bus.ReviewBUS;
+import com.keycapstore.bus.WarrantyBUS; // Import WarrantyBUS
 import com.keycapstore.model.Customer;
 import com.keycapstore.model.Invoice;
 import com.keycapstore.model.InvoiceDetail;
@@ -26,12 +27,14 @@ public class MyOrdersPanel extends JPanel implements Refreshable {
     private SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
     private ReviewBUS reviewBUS;
     private ProductBUS productBUS;
+    private WarrantyBUS warrantyBUS;
 
     public MyOrdersPanel(Object user) {
         this.currentUser = user;
         this.invoiceBus = new InvoiceBUS();
         this.reviewBUS = new ReviewBUS(); // Khởi tạo đúng cú pháp
         this.productBUS = new ProductBUS();
+        this.warrantyBUS = new WarrantyBUS(); // Khởi tạo WarrantyBUS
 
         setLayout(new BorderLayout());
         setBackground(ThemeColor.BG_LIGHT);
@@ -148,6 +151,13 @@ public class MyOrdersPanel extends JPanel implements Refreshable {
             btnRate.setFocusPainted(false);
             btnRate.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
+            // Nút Bảo hành
+            JButton btnWarranty = new JButton("Yêu cầu bảo hành");
+            btnWarranty.setBackground(ThemeColor.INFO); // Đã sửa thành biến màu đúng chuẩn của project
+            btnWarranty.setForeground(Color.WHITE);
+            btnWarranty.setFocusPainted(false);
+            btnWarranty.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
             // Kiểm tra xem đã đánh giá chưa
             if (currentUser instanceof Customer) {
                 int cusId = ((Customer) currentUser).getCustomerId();
@@ -157,6 +167,8 @@ public class MyOrdersPanel extends JPanel implements Refreshable {
                     btnRate.setText("Sản phẩm lỗi");
                     btnRate.setEnabled(false);
                     btnRate.setToolTipText("Không tìm thấy thông tin sản phẩm này");
+
+                    btnWarranty.setEnabled(false);
                 }
                 // Kiểm tra xem đã đánh giá chưa
                 else if (reviewBUS != null && reviewBUS.hasReviewed(cusId, d.getProductId())) {
@@ -188,12 +200,86 @@ public class MyOrdersPanel extends JPanel implements Refreshable {
                         }
                     });
                 }
+
+                // FIX LOGIC: Kiểm tra trạng thái bảo hành từ Database
+                String currentWarrantyStatus = warrantyBUS.getWarrantyStatusForCustomer(invoiceId, d.getProductId());
+                if (currentWarrantyStatus != null) {
+                    btnWarranty.setEnabled(false); // Khóa nút không cho spam gửi yêu cầu
+                    switch (currentWarrantyStatus) {
+                        case WarrantyBUS.STATUS_PENDING:
+                            btnWarranty.setText("Đang chờ duyệt");
+                            btnWarranty.setBackground(Color.GRAY);
+                            break;
+                        case WarrantyBUS.STATUS_APPROVED:
+                            btnWarranty.setText("Đã duyệt - Hãy gửi hàng");
+                            btnWarranty.setBackground(ThemeColor.INFO);
+                            break;
+                        case WarrantyBUS.STATUS_IN_PROGRESS:
+                            btnWarranty.setText("Hãng đang xử lý");
+                            btnWarranty.setBackground(ThemeColor.WARNING);
+                            break;
+                        case WarrantyBUS.STATUS_COMPLETED:
+                            btnWarranty.setText("Bảo hành hoàn tất");
+                            btnWarranty.setBackground(ThemeColor.SUCCESS);
+                            break;
+                        case WarrantyBUS.STATUS_REJECTED:
+                            btnWarranty.setText("Từ chối bảo hành");
+                            btnWarranty.setBackground(ThemeColor.DANGER);
+                            // Nút mở lại nếu bị từ chối và khách muốn gửi khiếu nại khác? (Tùy chọn)
+                            // btnWarranty.setEnabled(true);
+                            break;
+                    }
+                }
+
+                // Sự kiện cho nút Bảo Hành
+                btnWarranty.addActionListener(e -> {
+                    String reason = JOptionPane.showInputDialog(dialog,
+                            "Nhập mô tả chi tiết lỗi của sản phẩm [" + d.getProductName()
+                                    + "]:\n(Lưu ý: Chỉ áp dụng cho lỗi từ nhà sản xuất)",
+                            "Yêu cầu Bảo hành", JOptionPane.QUESTION_MESSAGE);
+
+                    if (reason != null && !reason.trim().isEmpty()) {
+                        try {
+                            // Mã sản phẩm thực tế
+                            int productId = d.getProductId();
+
+                            // GỌI DB THẬT
+                            WarrantyBUS.BUSResult result = warrantyBUS.createWarrantyRequest(invoiceId, productId,
+                                    cusId, reason);
+
+                            if (!result.isSuccess()) {
+                                JOptionPane.showMessageDialog(dialog, result.getMessage(), "Thất bại",
+                                        JOptionPane.ERROR_MESSAGE);
+                                return; // Dừng nếu lỗi (quá hạn bảo hành, v.v..)
+                            }
+
+                            // Báo thành công (UI chạy trước)
+                            JOptionPane.showMessageDialog(dialog,
+                                    "Đã gửi yêu cầu bảo hành cho:\n- SP: " + d.getProductName() + "\n- Lỗi: " + reason,
+                                    "Tiếp nhận", JOptionPane.INFORMATION_MESSAGE);
+
+                            btnWarranty.setText("Đã yêu cầu");
+                            btnWarranty.setEnabled(false);
+                            btnWarranty.setBackground(Color.LIGHT_GRAY);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            JOptionPane.showMessageDialog(dialog, "Có lỗi xảy ra: " + ex.getMessage(), "Lỗi",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                });
             } else {
                 btnRate.setVisible(false); // Ẩn nếu không phải khách hàng
+                btnWarranty.setVisible(false);
             }
 
+            JPanel pnlAction = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+            pnlAction.setBackground(Color.WHITE);
+            pnlAction.add(btnWarranty);
+            pnlAction.add(btnRate);
+
             itemPanel.add(lblInfo, BorderLayout.CENTER);
-            itemPanel.add(btnRate, BorderLayout.EAST);
+            itemPanel.add(pnlAction, BorderLayout.EAST);
             pnlItems.add(itemPanel);
         }
 

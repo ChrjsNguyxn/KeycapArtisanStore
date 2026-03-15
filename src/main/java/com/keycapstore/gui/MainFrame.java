@@ -19,8 +19,10 @@ public class MainFrame extends JFrame {
 
     private MenuButton btnDashboard, btnMuaHang, btnProduct, btnEmployee, btnCustomer, btnSales, btnLogout, btnRefresh,
             btnHistory,
-            btnStockHistory, btnImportManage, btnVoucher, btnShipping, btnCart, btnMyOrders, btnWishlist; // Thêm
-                                                                                                          // btnWishlist
+            btnStockHistory, btnImportManage, btnVoucher, btnShipping, btnWarranty, btnCart, btnMyOrders, btnMyShipping,
+            btnNotification,
+            btnWishlist; // Thêm btnMyShipping
+    // btnWishlist
     // btnMyOrders
 
     public MainFrame(Object user) {
@@ -70,12 +72,15 @@ public class MainFrame extends JFrame {
         btnStockHistory = createMenuBtn("Lịch Sử Nhập", "invoice2.png");
         btnImportManage = createMenuBtn("Nhập Hàng", "product2.png"); // Sửa: Đổi icon
         btnShipping = createMenuBtn("Vận Đơn", "shipping.png");
+        btnWarranty = createMenuBtn("Bảo Hành", "service.png"); // Nút Bảo hành
         btnCustomer = createMenuBtn("Khách Hàng", "customer.png");
         btnHistory = createMenuBtn("Lịch Sử Đơn", "invoice.png");
         btnVoucher = createMenuBtn("Voucher", "ticket.png");
         btnEmployee = createMenuBtn("Nhân Sự", "employees.png");
         btnCart = createMenuBtn("Giỏ Hàng", "sales.png"); // Nút mới cho khách
         btnMyOrders = createMenuBtn("Lịch Sử Mua", "invoice.png"); // Nút mới cho khách
+        btnMyShipping = createMenuBtn("Theo Dõi Đơn", "shipping.png"); // Nút theo dõi ship cho khách
+        btnNotification = createMenuBtn("Thông Báo", "ticket.png"); // Nút Thông Báo
         btnWishlist = createMenuBtn("Yêu Thích", "wishlist.png"); // Nút Yêu thích
         btnRefresh = createMenuBtn("Làm Mới", "reload.png");
         btnLogout = createMenuBtn("Đăng Xuất", "exit.png");
@@ -91,6 +96,8 @@ public class MainFrame extends JFrame {
             sidebarPanel.add(btnMuaHang); // Trang chủ
             sidebarPanel.add(btnCart); // Giỏ hàng
             sidebarPanel.add(btnMyOrders);// Lịch sử mua cá nhân
+            sidebarPanel.add(btnMyShipping); // Theo dõi đơn hàng
+            sidebarPanel.add(btnNotification); // Xem thông báo
             sidebarPanel.add(btnWishlist); // Yêu thích
         }
 
@@ -117,6 +124,7 @@ public class MainFrame extends JFrame {
             if ("super_admin".equals(role) || "sales_manager".equals(role)) {
                 sidebarPanel.add(btnSales);
                 sidebarPanel.add(btnShipping);
+                sidebarPanel.add(btnWarranty); // Quyền quản lý bảo hành
                 sidebarPanel.add(btnHistory); // Lịch sử đơn hàng chung (Admin)
             }
         }
@@ -137,6 +145,7 @@ public class MainFrame extends JFrame {
         btnProduct.addActionListener(e -> navigateTo("PRODUCT"));
         btnSales.addActionListener(e -> navigateTo("SALES"));
         btnShipping.addActionListener(e -> navigateTo("SHIPPING"));
+        btnWarranty.addActionListener(e -> navigateTo("WARRANTY")); // Sự kiện chuyển trang
         btnCustomer.addActionListener(e -> navigateTo("CUSTOMER"));
         btnEmployee.addActionListener(e -> navigateTo("EMPLOYEE"));
         btnStockHistory.addActionListener(e -> navigateTo("STOCK_HISTORY"));
@@ -145,6 +154,8 @@ public class MainFrame extends JFrame {
         btnVoucher.addActionListener(e -> navigateTo("VOUCHER"));
         btnCart.addActionListener(e -> navigateTo("CART"));
         btnMyOrders.addActionListener(e -> navigateTo("MY_ORDERS"));
+        btnMyShipping.addActionListener(e -> navigateTo("MY_SHIPPING"));
+        btnNotification.addActionListener(e -> navigateTo("NOTIFICATION"));
         btnWishlist.addActionListener(e -> navigateTo("WISHLIST"));
         btnRefresh.addActionListener(e -> refreshCurrentPage());
         btnLogout.addActionListener(e -> logout());
@@ -197,6 +208,10 @@ public class MainFrame extends JFrame {
                 return new CartPanel(currentUser, this::navigateTo);
             case "MY_ORDERS":
                 return new MyOrdersPanel(currentUser);
+            case "MY_SHIPPING":
+                return new com.keycapstore.gui.MyShippingPanel(currentUser);
+            case "NOTIFICATION":
+                return new com.keycapstore.gui.NotificationPanel(currentUser);
             case "WISHLIST":
                 return new WishlistPanel(currentUser, this::navigateTo);
             case "HISTORY":
@@ -218,6 +233,10 @@ public class MainFrame extends JFrame {
             case "SALES":
                 if (currentUser instanceof Employee)
                     return new SalesPanel((Employee) currentUser);
+                break;
+            case "WARRANTY":
+                if (currentUser instanceof Employee)
+                    return new WarrantyPanel((Employee) currentUser); // Truyền tài khoản nhân viên vào
                 break;
             case "EMPLOYEE":
                 if (currentUser instanceof Employee && "super_admin".equals(((Employee) currentUser).getRole())) {
@@ -241,6 +260,8 @@ public class MainFrame extends JFrame {
                 return btnSales;
             case "SHIPPING":
                 return btnShipping;
+            case "WARRANTY":
+                return btnWarranty;
             case "CUSTOMER":
                 return btnCustomer;
             case "EMPLOYEE":
@@ -257,6 +278,10 @@ public class MainFrame extends JFrame {
                 return btnCart;
             case "MY_ORDERS":
                 return btnMyOrders;
+            case "MY_SHIPPING":
+                return btnMyShipping;
+            case "NOTIFICATION":
+                return btnNotification;
             case "WISHLIST":
                 return btnWishlist;
             default:
@@ -300,6 +325,8 @@ public class MainFrame extends JFrame {
         btnProduct.setSelected(false);
         btnSales.setSelected(false);
         btnShipping.setSelected(false);
+        if (btnWarranty != null)
+            btnWarranty.setSelected(false);
         btnStockHistory.setSelected(false);
         if (btnImportManage != null)
             btnImportManage.setSelected(false);
@@ -311,6 +338,10 @@ public class MainFrame extends JFrame {
         btnVoucher.setSelected(false);
         btnCart.setSelected(false);
         btnMyOrders.setSelected(false);
+        if (btnMyShipping != null)
+            btnMyShipping.setSelected(false);
+        if (btnNotification != null)
+            btnNotification.setSelected(false);
         btnWishlist.setSelected(false);
         btnRefresh.setSelected(false);
 

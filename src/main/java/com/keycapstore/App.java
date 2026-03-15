@@ -298,13 +298,120 @@ public class App {
                         "warranty_id INT PRIMARY KEY IDENTITY(1,1), " +
                         "invoice_id INT, " +
                         "product_id INT, " +
+                        "customer_id INT, " +
+                        "employee_id INT, " +
+                        "issue NVARCHAR(MAX), " +
                         "end_date DATETIME, " +
-                        "status NVARCHAR(50) DEFAULT 'Active', " +
+                        "created_at DATETIME DEFAULT GETDATE(), " +
+                        "resolution_note NVARCHAR(MAX), " +
+                        "status NVARCHAR(50) DEFAULT 'pending', " +
                         "FOREIGN KEY (invoice_id) REFERENCES Invoice(invoice_id), " +
                         "FOREIGN KEY (product_id) REFERENCES Product(product_id)" +
                         ")";
                 st.executeUpdate(createWarrantySql);
                 System.out.println("✅ Đã tự động tạo bảng warranties.");
+            } else {
+                // Kiểm tra và thêm từng cột một cách an toàn
+                try {
+                    st.executeQuery("SELECT customer_id FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD customer_id INT");
+                }
+                try {
+                    st.executeQuery("SELECT employee_id FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD employee_id INT");
+                }
+                try {
+                    st.executeQuery("SELECT issue FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD issue NVARCHAR(MAX)");
+                }
+                try {
+                    st.executeQuery("SELECT created_at FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD created_at DATETIME DEFAULT GETDATE()");
+                }
+                try {
+                    st.executeQuery("SELECT resolution_note FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD resolution_note NVARCHAR(MAX)");
+                }
+                try {
+                    st.executeQuery("SELECT product_id FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD product_id INT");
+                }
+                try {
+                    st.executeQuery("SELECT invoice_id FROM warranties WHERE 1=0");
+                } catch (Exception ex) {
+                    st.executeUpdate("ALTER TABLE warranties ADD invoice_id INT");
+                }
+
+                // FIX BUGS LOGIC CŨ: Mở khóa cho phép các cột cũ được rỗng (NULL) để không bị
+                // lỗi INSERT
+                try {
+                    st.executeQuery("SELECT order_item_id FROM warranties WHERE 1=0");
+                    st.executeUpdate("ALTER TABLE warranties ALTER COLUMN order_item_id INT NULL");
+                } catch (Exception ex) {
+                }
+
+                // Mở khóa cho cột rác 'reason' (nếu có từ bản cũ)
+                try {
+                    st.executeQuery("SELECT reason FROM warranties WHERE 1=0");
+                    st.executeUpdate("ALTER TABLE warranties ALTER COLUMN reason NVARCHAR(MAX) NULL");
+                } catch (Exception ex) {
+                }
+
+                // Mở khóa thêm cho cột rác 'issue_description' (phòng hờ)
+                try {
+                    st.executeQuery("SELECT issue_description FROM warranties WHERE 1=0");
+                    st.executeUpdate("ALTER TABLE warranties ALTER COLUMN issue_description NVARCHAR(MAX) NULL");
+                } catch (Exception ex) {
+                }
+
+                // FIX BUGS LOGIC: Mở rộng cột 'status' để chứa đủ trạng thái "in_progress" (11
+                // ký tự)
+                // Tránh lỗi "String or binary data would be truncated"
+                try {
+                    st.executeUpdate("ALTER TABLE warranties ALTER COLUMN status NVARCHAR(50)");
+                } catch (Exception ex) {
+                }
+
+                // FIX BUGS LOGIC: Xóa bỏ các CHECK constraint cũ (nếu có) trên bảng warranties
+                // Để ngăn chặn lỗi: "The UPDATE statement conflicted with the CHECK constraint"
+                try {
+                    java.util.List<String> chks = new java.util.ArrayList<>();
+                    String sqlChk = "SELECT name FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID('warranties')";
+                    try (java.sql.ResultSet rsChk = st.executeQuery(sqlChk)) {
+                        while (rsChk.next()) {
+                            chks.add(rsChk.getString("name"));
+                        }
+                    }
+                    for (String chk : chks) {
+                        st.executeUpdate("ALTER TABLE warranties DROP CONSTRAINT " + chk);
+                        System.out.println("✅ Đã xóa CHECK constraint cũ trên bảng warranties: " + chk);
+                    }
+                } catch (Exception ex) {
+                }
+
+                System.out.println("✅ Đã kiểm tra và thêm các cột còn thiếu cho bảng warranties.");
+            }
+
+            // TẠO BẢNG THÔNG BÁO CHO KHÁCH HÀNG
+            java.sql.ResultSet notifTable = dbm.getTables(null, null, "notifications", null);
+            if (!notifTable.next()) {
+                String createNotifSql = "CREATE TABLE notifications (" +
+                        "notification_id INT PRIMARY KEY IDENTITY(1,1), " +
+                        "customer_id INT, " +
+                        "title NVARCHAR(255), " +
+                        "message NVARCHAR(MAX), " +
+                        "is_read BIT DEFAULT 0, " +
+                        "created_at DATETIME DEFAULT GETDATE(), " +
+                        "FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE" +
+                        ")";
+                st.executeUpdate(createNotifSql);
+                System.out.println("✅ Đã tự động tạo bảng notifications.");
             }
 
             java.sql.ResultSet supplierTable = dbm.getTables(null, null, "suppliers", null);
@@ -318,10 +425,28 @@ public class App {
                         ")";
                 st.executeUpdate(createSupplierSql);
                 st.executeUpdate(
-                        "INSERT INTO suppliers (name, phone, address) VALUES (N'Keychron VN', '0909123456', N'HCM')");
+                        "INSERT INTO suppliers (name, phone, address) VALUES (N'Keychron', '0909123456', N'China')");
                 st.executeUpdate(
-                        "INSERT INTO suppliers (name, phone, address) VALUES (N'Akko Distributor', '0909999888', N'Hanoi')");
+                        "INSERT INTO suppliers (name, phone, address) VALUES (N'Akko', '0909999888', N'China')");
                 System.out.println("✅ Đã tự động tạo bảng suppliers.");
+            }
+
+            // Tự động thêm các nhà phân phối nổi tiếng nếu chưa có
+            String[] popularSuppliers = {
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'Akko', '0909999888', N'China', 'support@akkogear.com')",
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'Gateron', '0907654321', N'China', 'sales@gateron.com')",
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'GMK', '0905554443', N'Germany', 'keycaps@gmk.de')",
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'Drop', '0901112223', N'USA', 'support@drop.com')",
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'KBDfans', '0909990001', N'China', 'kbdfans@gmail.com')",
+                    "INSERT INTO suppliers (name, phone, address, email) VALUES (N'Dwarf Factory', '0901119999', N'Vietnam', 'hello@dwarffactory.com')"
+            };
+            for (String sql : popularSuppliers) {
+                String name = sql.substring(sql.indexOf("N'") + 2, sql.indexOf("',"));
+                java.sql.ResultSet rsSup = st
+                        .executeQuery("SELECT count(*) FROM suppliers WHERE name = N'" + name + "'");
+                if (rsSup.next() && rsSup.getInt(1) == 0) {
+                    st.executeUpdate(sql);
+                }
             }
 
             java.sql.ResultSet importTable = dbm.getTables(null, null, "import_orders", null);

@@ -186,13 +186,20 @@ public class OrderHistoryPanel extends JPanel implements Refreshable {
 
             // Lấy thông tin từ dòng đang chọn
             String billId = modInvoice.getValueAt(row, 0).toString();
+            String seller = modInvoice.getValueAt(row, 1).toString();
+            String buyer = modInvoice.getValueAt(row, 2).toString() + " - " + modInvoice.getValueAt(row, 3).toString();
+
+            // FIX: Xử lý chuỗi giảm giá cho PDF (Bỏ dấu - nếu có, thêm ₫ nếu chưa có)
+            String discountRaw = modInvoice.getValueAt(row, 5).toString();
+            String discount = discountRaw.equals("-") ? "0 ₫" : discountRaw.replace("-", "").trim();
+
             String total = modInvoice.getValueAt(row, 7).toString().replace(" ₫", "").trim(); // Bỏ chữ đ
 
             // Chọn nơi lưu PDF
             String path = ExportHelper.promptSaveLocation(this, "HoaDon_" + billId + ".pdf", "pdf", "PDF Files");
             if (path != null) {
                 // Truyền bảng tbDetail (chi tiết món) vào hàm xuất PDF
-                ExportHelper.exportBillToPDF(tbDetail, billId, total, path);
+                ExportHelper.exportBillToPDF(tbDetail, billId, seller, buyer, discount, total, path);
             }
         });
 
@@ -243,7 +250,8 @@ public class OrderHistoryPanel extends JPanel implements Refreshable {
                 Object[] sup = (supplements != null) ? supplements.get(i.getId()) : null;
                 String rank = (sup != null && sup[0] != null) ? sup[0].toString() : "Không có";
                 double discVal = (sup != null && sup[1] != null) ? (Double) sup[1] : 0;
-                String discStr = (discVal > 0) ? "-" + df.format(discVal) : "-";
+                // FIX: Hiển thị số tiền giảm rõ ràng, không dùng dấu âm
+                String discStr = (discVal > 0) ? df.format(discVal) + " ₫" : "-";
 
                 modInvoice.addRow(new Object[] {
                         i.getId(),
@@ -291,7 +299,8 @@ public class OrderHistoryPanel extends JPanel implements Refreshable {
             double finalTotal = rawTotal - discountAmt;
 
             String voucherInfo = (discountAmt > 0) ? "Theo HĐ" : "-";
-            String discountStr = (discountAmt > 0) ? "-" + df.format(discountAmt) : "0";
+            // FIX: Hiển thị tiền giảm cụ thể trong bảng chi tiết
+            String discountStr = (discountAmt > 0) ? df.format(discountAmt) + " ₫" : "0 ₫";
 
             modDetail.addRow(new Object[] {
                     d.getProductName(),

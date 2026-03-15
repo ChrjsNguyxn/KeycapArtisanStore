@@ -40,6 +40,26 @@ public class SalesBUS {
         return null;
     }
 
+    public ArrayList<Voucher> getActiveVouchers() {
+        ArrayList<Voucher> list = new ArrayList<>();
+        String sql = "SELECT * FROM vouchers WHERE quantity > 0 AND CAST(expired_date AS DATE) >= CAST(GETDATE() AS DATE) AND CAST(start_date AS DATE) <= CAST(GETDATE() AS DATE)";
+        try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
+            ResultSet rs = st.executeQuery(sql);
+            while (rs.next()) {
+                list.add(new Voucher(
+                        rs.getInt("voucher_id"),
+                        rs.getString("code"),
+                        rs.getDouble("discount_percent"),
+                        rs.getInt("quantity"),
+                        rs.getTimestamp("start_date"),
+                        rs.getTimestamp("expired_date")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     public boolean checkout(int empId, String customerName, String customerPhone, double totalAmount,
             ArrayList<InvoiceDetail> cart) {
         Connection con = null;

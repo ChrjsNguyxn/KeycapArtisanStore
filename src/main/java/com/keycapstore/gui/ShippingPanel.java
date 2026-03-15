@@ -236,6 +236,7 @@ public class ShippingPanel extends JPanel implements Refreshable {
         if (JOptionPane.showConfirmDialog(this, msg, "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
             if (bus.updateStatus(id, newStatus)) {
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
+                sendNotificationForShipping(id, newStatus);
                 loadData();
             } else {
                 JOptionPane.showMessageDialog(this, "Lỗi cập nhật!", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -261,10 +262,46 @@ public class ShippingPanel extends JPanel implements Refreshable {
         if (newTracking != null) {
             if (bus.updateTracking(id, newTracking.trim())) {
                 JOptionPane.showMessageDialog(this, "Cập nhật mã vận đơn thành công!");
+                sendNotificationForTracking(id, newTracking.trim());
                 loadData(); // Tải lại để thấy thay đổi
             } else {
                 JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật mã vận đơn!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+
+    private void sendNotificationForShipping(int invoiceId, String status) {
+        String title = "";
+        String message = "";
+        if ("Shipping".equals(status)) {
+            title = "Đơn hàng đang giao";
+            message = "Đơn hàng #" + invoiceId + " đã được xuất kho và giao cho đơn vị vận chuyển.";
+        } else if ("Delivered".equals(status)) {
+            title = "Giao hàng thành công";
+            message = "Đơn hàng #" + invoiceId + " đã được giao thành công. Cảm ơn bạn đã mua sắm tại Keyforge!";
+        } else if ("Cancelled".equals(status)) {
+            title = "Cập nhật đơn hàng";
+            message = "Đơn hàng #" + invoiceId + " đã bị hủy hoặc giao thất bại.";
+        } else {
+            return;
+        }
+        sendNotification(invoiceId, title, message);
+    }
+
+    private void sendNotificationForTracking(int invoiceId, String trackingNumber) {
+        sendNotification(invoiceId, "Cập nhật mã vận đơn",
+                "Đơn hàng #" + invoiceId + " có mã vận đơn: " + trackingNumber);
+    }
+
+    private void sendNotification(int invoiceId, String title, String message) {
+        String sql = "INSERT INTO notifications (customer_id, title, message) SELECT customer_id, ?, ? FROM Invoice WHERE invoice_id = ? AND customer_id IS NOT NULL AND customer_id > 0";
+        try (java.sql.Connection con = com.keycapstore.config.ConnectDB.getConnection();
+                java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setString(1, title);
+            pst.setString(2, message);
+            pst.setInt(3, invoiceId);
+            pst.executeUpdate();
+        } catch (Exception e) {
         }
     }
 }

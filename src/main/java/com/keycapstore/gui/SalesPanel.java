@@ -34,7 +34,8 @@ public class SalesPanel extends JPanel implements Refreshable {
     // UI Components
     private JTable tbProducts, tbCart;
     private DefaultTableModel modProducts, modCart;
-    private JTextField txtPhone, txtVoucher;
+    private JTextField txtPhone;
+    private JComboBox<Voucher> cbVoucher; // Thay JTextField bằng JComboBox
     private JTextArea txtAddress; // Thêm trường địa chỉ
     private JRadioButton rdAtStore, rdDelivery; // Thêm lựa chọn giao hàng
     private JLabel lblCustomerName, lblRank, lblVoucherStt;
@@ -154,8 +155,52 @@ public class SalesPanel extends JPanel implements Refreshable {
         // 2.1 GIỎ HÀNG (Ở TRÊN)
         String[] cartHeaders = { "Tên SP", "SL", "Đơn Giá", "Thành Tiền" };
         modCart = new DefaultTableModel(cartHeaders, 0) {
+            @Override
             public boolean isCellEditable(int row, int column) {
-                return false;
+                // FIX: Cho phép sửa cột Số lượng (index 1)
+                return column == 1;
+            }
+
+            @Override
+            public void setValueAt(Object aValue, int row, int column) {
+                if (column == 1) {
+                    try {
+                        String input = aValue.toString().trim();
+                        if (input.isEmpty())
+                            return;
+
+                        int newQty = Integer.parseInt(input);
+                        InvoiceDetail item = cartItems.get(row);
+
+                        // Tìm sản phẩm gốc để check tồn kho
+                        Product product = listProducts.stream()
+                                .filter(p -> p.getId() == item.getProductId())
+                                .findFirst()
+                                .orElse(null);
+
+                        if (newQty <= 0) {
+                            JOptionPane.showMessageDialog(SalesPanel.this, "Số lượng phải lớn hơn 0!");
+                            return; // Không cập nhật
+                        }
+
+                        if (product != null && newQty > product.getStock()) {
+                            JOptionPane.showMessageDialog(SalesPanel.this,
+                                    "Vượt quá tồn kho! (Kho còn: " + product.getStock() + ")");
+                            return; // Không cập nhật
+                        }
+
+                        // Logic hợp lệ: Cập nhật List và Model
+                        item.setQuantity(newQty);
+                        super.setValueAt(newQty, row, column); // Cập nhật cột SL
+                        super.setValueAt(df.format(item.getTotal()), row, 3); // Cập nhật cột Thành tiền
+                        updateMoney(); // Tính lại tổng hóa đơn
+
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(SalesPanel.this, "Vui lòng nhập số nguyên hợp lệ!");
+                    }
+                } else {
+                    super.setValueAt(aValue, row, column);
+                }
             }
         };
         // FIX: Khởi tạo tbCart trước khi set thuộc tính (Tránh lỗi dòng 148)
@@ -217,8 +262,10 @@ public class SalesPanel extends JPanel implements Refreshable {
         gbc.gridx = 0;
         pnlCheckout.add(new JLabel("Mã Giảm Giá:"), gbc);
         gbc.gridx = 1;
-        txtVoucher = new JTextField(12);
-        pnlCheckout.add(txtVoucher, gbc);
+        // Thay thế ô nhập bằng hộp chọn
+        cbVoucher = new JComboBox<>();
+        cbVoucher.setPreferredSize(new Dimension(135, 25));
+        pnlCheckout.add(cbVoucher, gbc);
         gbc.gridx = 2;
         JButton btnApplyVoucher = new JButton("Áp dụng");
         pnlCheckout.add(btnApplyVoucher, gbc);
@@ -350,12 +397,31 @@ public class SalesPanel extends JPanel implements Refreshable {
 
         setupActions();
         loadProducts();
+        loadVouchers(); // Load danh sách voucher khi khởi tạo
 
         // Nút tìm SĐT
         btnCheckPhone.addActionListener(e -> checkPhone());
 
         // Nút áp Voucher
         btnApplyVoucher.addActionListener(e -> applyVoucher());
+
+        // Thêm: Hiển thị số lượng voucher ngay khi chọn từ danh sách
+        cbVoucher.addActionListener(e -> {
+            Voucher selected = (Voucher) cbVoucher.getSelectedItem();
+            if (selected != null) {
+                if (selected.getId() != -1) {
+                    lblVoucherStt.setText("Sẵn sàng: Còn " + selected.getQuantity() + " lượt (Bấm Áp dụng để dùng)");
+                    lblVoucherStt.setForeground(new Color(0, 102, 204)); // Màu xanh dương đậm
+                } else {
+                    lblVoucherStt.setText("Chưa áp dụng mã");
+                    lblVoucherStt.setForeground(Color.GRAY);
+                }
+                // Reset trạng thái voucher hiện tại nếu thay đổi lựa chọn (để tính lại tiền
+                // chuẩn xác)
+                currentVoucher = null;
+                updateMoney();
+            }
+        });
 
         // Thay đổi loại ship -> Tính lại tiền
         cbShipping.addActionListener(e -> updateMoney());
@@ -380,6 +446,7 @@ public class SalesPanel extends JPanel implements Refreshable {
     @Override
     public void refresh() {
         loadProducts();
+        loadVouchers(); // Refresh danh sách voucher
     }
 
     private JButton createButton(String text, Color bg) {
@@ -394,6 +461,21 @@ public class SalesPanel extends JPanel implements Refreshable {
     private void loadProducts() {
         listProducts = productBus.getAllProducts();
         filterAndSort(); // Gọi hàm lọc thay vì add trực tiếp
+    }
+
+    private void loadVouchers() {
+        cbVoucher.removeAllItems();
+        // Thêm mục mặc định
+        Voucher defaultV = new Voucher();
+        defaultV.setId(-1);
+        defaultV.setCode("Chọn mã giảm giá");
+        defaultV.setDiscountPercent(0);
+        cbVoucher.addItem(defaultV);
+
+        ArrayList<Voucher> vouchers = salesBus.getActiveVouchers();
+        for (Voucher v : vouchers) {
+            cbVoucher.addItem(v);
+        }
     }
 
     private void loadShippingMethods() {
@@ -600,8 +682,10 @@ public class SalesPanel extends JPanel implements Refreshable {
     }
 
     private void applyVoucher() {
-        String code = txtVoucher.getText().trim().toUpperCase(); // Chuyển về chữ hoa
-        if (code.isEmpty()) {
+        Voucher selected = (Voucher) cbVoucher.getSelectedItem();
+
+        // Nếu chọn mục mặc định (ID = -1) hoặc null
+        if (selected == null || selected.getId() == -1) {
             currentVoucher = null;
             lblVoucherStt.setText("Đã hủy mã");
             lblVoucherStt.setForeground(Color.GRAY);
@@ -609,18 +693,26 @@ public class SalesPanel extends JPanel implements Refreshable {
             return;
         }
 
-        Voucher v = salesBus.getValidVoucher(code);
+        // Kiểm tra lại tính hợp lệ (phòng trường hợp voucher vừa hết hạn hoặc hết số
+        // lượng trong lúc đang mở app)
+        Voucher v = salesBus.getValidVoucher(selected.getCode());
+
         if (v != null) {
             currentVoucher = v;
+            // Hiển thị số lượng còn lại như cũ
             lblVoucherStt.setText(
                     "Đã áp dụng: Giảm " + v.getDiscountPercent() + "% (Còn " + v.getQuantity() + " lượt)");
             lblVoucherStt.setForeground(ThemeColor.SUCCESS);
             JOptionPane.showMessageDialog(this, "Áp dụng mã giảm giá thành công!", "Thành công",
                     JOptionPane.INFORMATION_MESSAGE);
         } else {
+            // Nếu check lại thấy không hợp lệ (ví dụ hết lượt)
             currentVoucher = null;
-            lblVoucherStt.setText("Mã không hợp lệ hoặc đã hết hạn!");
+            lblVoucherStt.setText("Mã này vừa hết lượt hoặc hết hạn!");
             lblVoucherStt.setForeground(ThemeColor.DANGER);
+
+            // Load lại danh sách để loại bỏ voucher đã hết
+            loadVouchers();
         }
         updateMoney();
     }
@@ -653,7 +745,9 @@ public class SalesPanel extends JPanel implements Refreshable {
             lblRank.setText("Hạng: Đồng (0%)");
             lblVoucherStt.setText("Chưa áp dụng mã");
             lblVoucherStt.setForeground(Color.GRAY);
-            txtVoucher.setText("");
+            if (cbVoucher.getItemCount() > 0) {
+                cbVoucher.setSelectedIndex(0); // Reset về "Chọn mã..."
+            }
             txtAddress.setText("");
             rdAtStore.setSelected(true); // Reset về mua tại chỗ
             cbShipping.setEnabled(false);
@@ -756,6 +850,11 @@ public class SalesPanel extends JPanel implements Refreshable {
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Giao dịch thành công! Đã tự động cộng điểm Rank.");
+                if (cusId > 0) {
+                    sendOrderNotification(cusId, "Đặt hàng thành công",
+                            "Đơn hàng của bạn đã được tạo thành công với tổng tiền " + df.format(finalTotal)
+                                    + " ₫. Cảm ơn bạn!");
+                }
 
                 // --- TỰ ĐỘNG IN HÓA ĐƠN PDF ---
                 try {
@@ -769,12 +868,18 @@ public class SalesPanel extends JPanel implements Refreshable {
                     // Lấy phần số tiền và đơn vị
                     String totalAmount = totalText.substring(totalText.indexOf(":") + 1).trim();
 
+                    // Lấy thông tin bổ sung cho PDF
+                    String sellerName = currentUser.getFullName();
+                    String buyerInfo = cName + " - " + cPhone;
+                    String discountStr = lblDiscount.getText(); // Lấy text hiển thị giảm giá
+
                     // HỎI NGƯỜI DÙNG NƠI LƯU FILE
                     String filePath = ExportHelper.promptSaveLocation(this, "HoaDon_" + invoiceIdForPdf + ".pdf", "pdf",
                             "Hóa đơn PDF");
 
                     if (filePath != null) {
-                        ExportHelper.exportBillToPDF(tbCart, invoiceIdForPdf, totalAmount, filePath);
+                        ExportHelper.exportBillToPDF(tbCart, invoiceIdForPdf, sellerName, buyerInfo, discountStr,
+                                totalAmount, filePath);
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -788,7 +893,7 @@ public class SalesPanel extends JPanel implements Refreshable {
                     currentCustomer = null;
                     currentVoucher = null;
                     txtPhone.setText("");
-                    txtVoucher.setText("");
+                    // Voucher đã được reset ở trên (dòng loadVouchers) hoặc set index
                     txtAddress.setText("");
                     lblCustomerName.setText("Khách Vãng Lai");
                     lblRank.setText("Hạng: Đồng (0%)");
@@ -799,6 +904,9 @@ public class SalesPanel extends JPanel implements Refreshable {
                     if (cbPayment.getItemCount() > 0)
                         cbPayment.setSelectedIndex(0);
 
+                    if (cbVoucher.getItemCount() > 0)
+                        cbVoucher.setSelectedIndex(0);
+
                     rdAtStore.setSelected(true); // Reset về mặc định
                     cbShipping.setEnabled(false);
 
@@ -807,10 +915,23 @@ public class SalesPanel extends JPanel implements Refreshable {
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
+                loadVouchers(); // Tải lại danh sách voucher để cập nhật số lượng mới
             } else {
                 JOptionPane.showMessageDialog(this, "Lỗi khi chốt đơn. Đã Rollback giao dịch!", "Lỗi",
                         JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+
+    private void sendOrderNotification(int customerId, String title, String message) {
+        String sql = "INSERT INTO notifications (customer_id, title, message) VALUES (?, ?, ?)";
+        try (java.sql.Connection con = com.keycapstore.config.ConnectDB.getConnection();
+                java.sql.PreparedStatement pst = con.prepareStatement(sql)) {
+            pst.setInt(1, customerId);
+            pst.setString(2, title);
+            pst.setString(3, message);
+            pst.executeUpdate();
+        } catch (Exception e) {
         }
     }
 }

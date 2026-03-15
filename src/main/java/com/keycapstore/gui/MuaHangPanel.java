@@ -458,8 +458,11 @@ public class MuaHangPanel extends JPanel implements Refreshable {
         cartCountLabel.setOpaque(true);
         cartCountLabel.setBorder(new EmptyBorder(2, 6, 2, 6));
 
-        cartPanel.add(cartBtn);
-        cartPanel.add(cartCountLabel);
+        // FIX: Ẩn nút giỏ hàng đối với Admin/Nhân viên
+        if (!(currentUser instanceof Employee)) {
+            cartPanel.add(cartBtn);
+            cartPanel.add(cartCountLabel);
+        }
 
         rightPanel.add(cartPanel);
 
@@ -1088,16 +1091,24 @@ public class MuaHangPanel extends JPanel implements Refreshable {
         addBtn.setFocusPainted(false);
         addBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         addBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        addBtn.addActionListener(e -> {
-            CartPanel.addToCart(p, 1);
-            updateCartCount();
-            JOptionPane.showMessageDialog(this, "Đã thêm " + p.getName() + " vào giỏ hàng!");
-        });
 
-        if (p.getStock() <= 0) {
+        // FIX: Logic nút mua hàng (Admin chỉ xem)
+        if (currentUser instanceof Employee) {
             addBtn.setEnabled(false);
-            addBtn.setText("Hết hàng");
-            addBtn.setBackground(Color.GRAY);
+            addBtn.setText("Chế độ Admin");
+            addBtn.setBackground(Color.LIGHT_GRAY);
+            addBtn.setToolTipText("Tài khoản quản trị chỉ có quyền xem.");
+        } else {
+            addBtn.addActionListener(e -> {
+                CartPanel.addToCart(p, 1);
+                updateCartCount();
+                JOptionPane.showMessageDialog(this, "Đã thêm " + p.getName() + " vào giỏ hàng!");
+            });
+            if (p.getStock() <= 0) {
+                addBtn.setEnabled(false);
+                addBtn.setText("Hết hàng");
+                addBtn.setBackground(Color.GRAY);
+            }
         }
 
         card.add(topActionPanel);
@@ -1304,6 +1315,18 @@ public class MuaHangPanel extends JPanel implements Refreshable {
             btnBuyNow.setText("HẾT HÀNG");
         }
 
+        // FIX: Disable nút mua trong chi tiết sản phẩm với Admin
+        if (currentUser instanceof Employee) {
+            btnAddToCart.setEnabled(false);
+            btnBuyNow.setEnabled(false);
+            // Nếu còn hàng thì đổi text để báo hiệu, nếu hết hàng thì giữ nguyên text Hết
+            // hàng
+            if (p.getStock() > 0) {
+                btnAddToCart.setText("ADMIN VIEW");
+                btnBuyNow.setText("ADMIN VIEW");
+            }
+        }
+
         JPanel pnlPolicy = new JPanel(new GridLayout(3, 1, 0, 10));
         pnlPolicy.setBackground(Color.WHITE);
         pnlPolicy.add(createDetailPolicyItem("shipping.png", "Giao hàng toàn quốc", "Đồng kiểm khi nhận hàng"));
@@ -1317,15 +1340,6 @@ public class MuaHangPanel extends JPanel implements Refreshable {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 14));
         tabbedPane.setBackground(Color.WHITE);
-
-        JEditorPane txtDesc = new JEditorPane();
-        txtDesc.setContentType("text/html");
-        txtDesc.setText("<html><body style='font-family: Segoe UI; padding: 20px; font-size: 14px;'>"
-                + (p.getDescription() != null ? p.getDescription() : "Đang cập nhật mô tả...")
-                + "</body></html>");
-        txtDesc.setEditable(false);
-        txtDesc.setCaretPosition(0);
-        tabbedPane.addTab("Mô tả chi tiết", new JScrollPane(txtDesc));
 
         JPanel pnlReviews = new JPanel(new BorderLayout());
         pnlReviews.setBackground(Color.WHITE);

@@ -3,6 +3,7 @@ package com.keycapstore.bus;
 import com.keycapstore.config.ConnectDB;
 import com.keycapstore.dao.WishlistDAO;
 import com.keycapstore.model.Product;
+import com.keycapstore.model.SupplierDTO;
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -352,5 +353,24 @@ public class ProductBUS {
                     .ifPresent(result::add);
         }
         return result;
+    }
+
+    public ArrayList<SupplierDTO> getAllSuppliers() {
+        ArrayList<SupplierDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM suppliers";
+        try (Connection con = ConnectDB.getConnection(); Statement st = con.createStatement()) {
+            ResultSet rs = st.executeQuery(sql);
+            while (rs.next()) {
+                list.add(new SupplierDTO(
+                        rs.getInt("supplier_id"),
+                        rs.getString("name"),
+                        rs.getString("phone"),
+                        rs.getString("address"),
+                        rs.getString("email")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }

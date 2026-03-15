@@ -93,7 +93,9 @@ public class ExportHelper {
     }
 
     // 2. HÀM XUẤT PDF - In Hóa Đơn
-    public static void exportBillToPDF(JTable table, String billId, String totalMoney, String filePath) {
+    // Cập nhật: Thêm Seller, Buyer, Discount
+    public static void exportBillToPDF(JTable table, String billId, String seller, String buyer, String discount,
+            String totalMoney, String filePath) {
         try {
             Document document = new Document();
             PdfWriter.getInstance(document, new FileOutputStream(filePath));
@@ -122,9 +124,19 @@ public class ExportHelper {
             document.add(title);
 
             document.add(new Paragraph(" "));
-            document.add(new Paragraph("Ma Hoa Don: " + billId, textFont));
-            document.add(new Paragraph("Ngay Tao: " + java.time.LocalDate.now(), textFont));
+            document.add(new Paragraph("Mã Hóa Đơn: " + billId, textFont));
+            document.add(
+                    new Paragraph(
+                            "Ngày Tạo: " + java.time.LocalDateTime.now()
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                            textFont));
+
+            // Thêm thông tin Người Mua - Người Bán
             document.add(new Paragraph("--------------------------------------------------"));
+            document.add(new Paragraph("Nhân Viên Bán: " + seller, textFont));
+            document.add(new Paragraph("Khách Hàng: " + buyer, textFont));
+            document.add(new Paragraph("--------------------------------------------------"));
+            document.add(new Paragraph("CHI TIẾT ĐƠN HÀNG:", boldFont));
             document.add(new Paragraph(" ")); // Dòng trống
 
             // Tạo bảng PDF
@@ -161,7 +173,12 @@ public class ExportHelper {
             document.add(pdfTable);
             document.add(new Paragraph(" "));
 
-            Paragraph totalPara = new Paragraph("TONG TIEN: " + totalMoney + " VND", titleFont);
+            // Thêm dòng giảm giá
+            Paragraph discountPara = new Paragraph("Giảm Giá: " + discount, textFont);
+            discountPara.setAlignment(Element.ALIGN_RIGHT);
+            document.add(discountPara);
+
+            Paragraph totalPara = new Paragraph("TỔNG TIỀN: " + totalMoney + " VND", titleFont);
             totalPara.setAlignment(Element.ALIGN_RIGHT);
             document.add(totalPara);
 

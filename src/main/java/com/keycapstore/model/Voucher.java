@@ -76,4 +76,12 @@ public class Voucher {
     public void setExpiredDate(Date expiredDate) {
         this.expiredDate = expiredDate;
     }
+
+    @Override
+    public String toString() {
+        if (id == -1)
+            return code; // Dùng cho mục mặc định "Chọn mã..."
+        // Hiển thị: SALE10 (-10%)
+        return code + " (-" + (int) discountPercent + "%)";
+    }
 }

@@ -40,7 +40,8 @@ public class CartPanel extends JPanel implements Refreshable {
     private JTable table;
     private DefaultTableModel model;
     private JLabel lblSubTotal, lblDiscount, lblShippingFee, lblFinalTotal;
-    private JTextField txtVoucher, txtAddress;
+    private JComboBox<Voucher> cbVoucher; // Thay JTextField bằng JComboBox
+    private JTextField txtAddress;
     private JComboBox<ShippingMethod> cbShipping;
     private JButton btnApplyVoucher;
     private JLabel lblVoucherStt;
@@ -87,7 +88,45 @@ public class CartPanel extends JPanel implements Refreshable {
         model = new DefaultTableModel(headers, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5;
+                // FIX: Cho phép sửa cột Số lượng (index 2) và cột Button (index 5)
+                return column == 2 || column == 5;
+            }
+
+            @Override
+            public void setValueAt(Object aValue, int row, int column) {
+                if (column == 2) { // Cột Số Lượng
+                    try {
+                        String input = aValue.toString().trim();
+                        if (input.isEmpty())
+                            return;
+
+                        int newQty = Integer.parseInt(input);
+                        if (newQty <= 0) {
+                            JOptionPane.showMessageDialog(CartPanel.this, "Số lượng phải lớn hơn 0!");
+                            return; // Không cập nhật
+                        }
+
+                        InvoiceDetail item = cartItems.get(row);
+                        Product p = productBUS.getProductById(item.getProductId());
+
+                        if (p != null && newQty > p.getStock()) {
+                            JOptionPane.showMessageDialog(CartPanel.this,
+                                    "Vượt quá tồn kho! (Kho còn: " + p.getStock() + ")");
+                            return;
+                        }
+
+                        item.setQuantity(newQty);
+                        super.setValueAt(newQty, row, column);
+                        super.setValueAt(df.format(item.getTotal()) + " ₫", row, 4); // Cập nhật cột Thành Tiền
+                        updateMoney();
+                        saveCartToFile();
+
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(CartPanel.this, "Vui lòng nhập số nguyên hợp lệ!");
+                    }
+                } else {
+                    super.setValueAt(aValue, row, column);
+                }
             }
         };
         table = new JTable(model);
@@ -102,7 +141,7 @@ public class CartPanel extends JPanel implements Refreshable {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
 
-                if (row != -1 && col != table.getColumnCount() - 1) {
+                if (row != -1 && col != 2 && col != table.getColumnCount() - 1) {
                     showProductDetailsForSelectedRow(row);
                 }
             }
@@ -146,10 +185,28 @@ public class CartPanel extends JPanel implements Refreshable {
         gbc.gridy++;
         JPanel pnlVoucher = new JPanel(new BorderLayout(5, 0));
         pnlVoucher.setBackground(Color.WHITE);
-        txtVoucher = new JTextField();
+
+        cbVoucher = new JComboBox<>();
+        loadVouchers(); // Load danh sách voucher
+
+        // Thêm sự kiện hiển thị trạng thái voucher khi chọn
+        cbVoucher.addActionListener(e -> {
+            Voucher selected = (Voucher) cbVoucher.getSelectedItem();
+            if (selected != null) {
+                if (selected.getId() != -1) {
+                    lblVoucherStt.setText("Sẵn sàng: Còn " + selected.getQuantity() + " lượt (Bấm Áp dụng)");
+                    lblVoucherStt.setForeground(new Color(0, 102, 204));
+                } else {
+                    lblVoucherStt.setText(" ");
+                }
+                currentVoucher = null;
+                updateMoney();
+            }
+        });
+
         btnApplyVoucher = new JButton("Áp dụng");
         btnApplyVoucher.addActionListener(e -> applyVoucher());
-        pnlVoucher.add(txtVoucher, BorderLayout.CENTER);
+        pnlVoucher.add(cbVoucher, BorderLayout.CENTER);
         pnlVoucher.add(btnApplyVoucher, BorderLayout.EAST);
         pnlInfo.add(pnlVoucher, gbc);
 
@@ -218,16 +275,31 @@ public class CartPanel extends JPanel implements Refreshable {
         }
     }
 
+    private void loadVouchers() {
+        cbVoucher.removeAllItems();
+        Voucher defaultV = new Voucher();
+        defaultV.setId(-1);
+        defaultV.setCode("Chọn mã giảm giá");
+        defaultV.setDiscountPercent(0);
+        cbVoucher.addItem(defaultV);
+
+        ArrayList<Voucher> vouchers = salesBus.getActiveVouchers();
+        for (Voucher v : vouchers) {
+            cbVoucher.addItem(v);
+        }
+    }
+
     private void applyVoucher() {
-        String code = txtVoucher.getText().trim().toUpperCase();
-        if (code.isEmpty()) {
+        Voucher selected = (Voucher) cbVoucher.getSelectedItem();
+
+        if (selected == null || selected.getId() == -1) {
             currentVoucher = null;
             lblVoucherStt.setText(" ");
             updateMoney();
             return;
         }
 
-        Voucher v = salesBus.getValidVoucher(code);
+        Voucher v = salesBus.getValidVoucher(selected.getCode());
         if (v != null) {
             currentVoucher = v;
             lblVoucherStt.setText("Đã áp dụng: Giảm " + v.getDiscountPercent() + "%");
@@ -237,6 +309,7 @@ public class CartPanel extends JPanel implements Refreshable {
             currentVoucher = null;
             lblVoucherStt.setText("Mã không hợp lệ hoặc hết hạn!");
             lblVoucherStt.setForeground(ThemeColor.DANGER);
+            loadVouchers(); // Tải lại nếu mã hết hạn
         }
         updateMoney();
     }
@@ -360,6 +433,8 @@ public class CartPanel extends JPanel implements Refreshable {
             JOptionPane.showMessageDialog(this, "Đặt hàng thành công! Cảm ơn bạn đã mua sắm.");
 
             clearCart();
+            if (cbVoucher.getItemCount() > 0)
+                cbVoucher.setSelectedIndex(0); // Reset voucher
         } else {
             JOptionPane.showMessageDialog(this, "Đặt hàng thất bại. Vui lòng thử lại.");
         }
@@ -368,6 +443,7 @@ public class CartPanel extends JPanel implements Refreshable {
     @Override
     public void refresh() {
         loadCartData();
+        loadVouchers();
     }
 
     private void showProductDetail(Product p) {
@@ -534,15 +610,6 @@ public class CartPanel extends JPanel implements Refreshable {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 14));
         tabbedPane.setBackground(Color.WHITE);
-
-        JEditorPane txtDesc = new JEditorPane();
-        txtDesc.setContentType("text/html");
-        txtDesc.setText("<html><body style='font-family: Segoe UI; padding: 20px; font-size: 14px;'>"
-                + (p.getDescription() != null ? p.getDescription() : "Đang cập nhật mô tả...")
-                + "</body></html>");
-        txtDesc.setEditable(false);
-        txtDesc.setCaretPosition(0);
-        tabbedPane.addTab("Mô tả chi tiết", new JScrollPane(txtDesc));
 
         JPanel pnlReviews = new JPanel(new BorderLayout());
         pnlReviews.setBackground(Color.WHITE);

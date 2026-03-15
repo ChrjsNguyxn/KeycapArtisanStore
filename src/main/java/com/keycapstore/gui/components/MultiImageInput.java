@@ -97,8 +97,13 @@ public class MultiImageInput extends JPanel {
         // 1. Cập nhật ảnh lớn
         if (!imagePaths.isEmpty()) {
             ImageIcon largeIcon = ImageHelper.loadResizedIcon(imagePaths.get(0), LARGE_IMG_SIZE, LARGE_IMG_SIZE);
-            lblLargeImage.setIcon(largeIcon);
-            lblLargeImage.setText(null);
+            if (largeIcon != null) {
+                lblLargeImage.setIcon(largeIcon);
+                lblLargeImage.setText(null);
+            } else {
+                lblLargeImage.setIcon(null);
+                lblLargeImage.setText("<html><center>Không tải được ảnh<br/>(File lỗi hoặc bị xóa)</center></html>");
+            }
         } else {
             lblLargeImage.setIcon(null);
             lblLargeImage.setText("Click [+] để thêm ảnh");
@@ -165,7 +170,14 @@ public class MultiImageInput extends JPanel {
                     if (SwingUtilities.isLeftMouseButton(e)) {
                         // Xem ảnh lớn
                         ImageIcon largeIcon = ImageHelper.loadResizedIcon(path, LARGE_IMG_SIZE, LARGE_IMG_SIZE);
-                        lblLargeImage.setIcon(largeIcon);
+                        if (largeIcon != null) {
+                            lblLargeImage.setIcon(largeIcon);
+                            lblLargeImage.setText(null);
+                        } else {
+                            lblLargeImage.setIcon(null);
+                            lblLargeImage.setText(
+                                    "<html><center>Không tải được ảnh<br/>(File lỗi hoặc bị xóa)</center></html>");
+                        }
                     }
                 }
             });
@@ -186,22 +198,25 @@ public class MultiImageInput extends JPanel {
             }
 
             // 2. Dời đến vị trí...
-            JMenu menuMove = new JMenu("Dời đến vị trí...");
-            for (int k = 0; k < imagePaths.size(); k++) {
-                if (k == index)
-                    continue; // Bỏ qua vị trí hiện tại
+            // FIX: Chỉ hiện menu di chuyển nếu có nhiều hơn 1 ảnh
+            if (imagePaths.size() > 1) {
+                JMenu menuMove = new JMenu("Dời đến vị trí...");
+                for (int k = 0; k < imagePaths.size(); k++) {
+                    if (k == index)
+                        continue; // Bỏ qua vị trí hiện tại
 
-                int targetPos = k; // Biến final cho lambda
-                JMenuItem itemPos = new JMenuItem("Vị trí " + (k + 1));
-                itemPos.addActionListener(e -> {
-                    String item = imagePaths.remove(index);
-                    imagePaths.add(targetPos, item);
-                    refreshView();
-                });
-                menuMove.add(itemPos);
+                    int targetPos = k; // Biến final cho lambda
+                    JMenuItem itemPos = new JMenuItem("Vị trí " + (k + 1));
+                    itemPos.addActionListener(e -> {
+                        String item = imagePaths.remove(index);
+                        imagePaths.add(targetPos, item);
+                        refreshView();
+                    });
+                    menuMove.add(itemPos);
+                }
+                menu.add(menuMove);
+                menu.addSeparator();
             }
-            menu.add(menuMove);
-            menu.addSeparator();
 
             // 3. Xóa ảnh
             JMenuItem itemDel = new JMenuItem("Xóa ảnh này");

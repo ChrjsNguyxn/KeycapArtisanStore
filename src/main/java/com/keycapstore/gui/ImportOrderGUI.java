@@ -25,12 +25,12 @@ import java.util.List;
 public class ImportOrderGUI extends JFrame {
 
     // Thay đổi: Nhập tay Supplier và Product
-    private JTextField txtSupplierName;
+    private JComboBox<SupplierDTO> cbSupplier; // Thay TextField
     private JTextField txtProductName;
     private JTextField txtOrigin; // Thêm trường Xuất xứ
     private JComboBox<Employee> cbEmployee;
 
-    private JTextField txtQuantity, txtImportPrice;
+    private JTextField txtQuantity, txtImportPrice, txtSellingPrice; // Thêm giá bán
     private JTextArea txtNote;
 
     private JTable table;
@@ -79,24 +79,26 @@ public class ImportOrderGUI extends JFrame {
         topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         topPanel.setBackground(CREAM_LIGHT);
 
-        txtSupplierName = new JTextField();
+        cbSupplier = new JComboBox<>();
         cbEmployee = new JComboBox<>();
         txtProductName = new JTextField();
         txtOrigin = new JTextField(); // Init
 
         txtQuantity = new JTextField();
         txtImportPrice = new JTextField();
+        txtSellingPrice = new JTextField(); // Init
         txtNote = new JTextArea(3, 20);
 
         // Khởi tạo Panel nhập ảnh
         pnlImages = new MultiImageInput();
 
-        styleField(txtSupplierName);
         styleField(txtProductName);
         styleField(txtOrigin);
         styleField(txtQuantity);
         styleField(txtImportPrice);
+        styleField(txtSellingPrice);
         styleCombo(cbEmployee);
+        styleCombo(cbSupplier);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 10, 5, 10); // Padding
@@ -110,12 +112,13 @@ public class ImportOrderGUI extends JFrame {
         gbc.gridx = 0;
 
         // Xếp chồng từ trên xuống dưới (Label -> Field)
-        addVerticalItem(topPanel, createLabel("Nhà cung cấp (Nhập tên):"), txtSupplierName, gbc);
+        addVerticalItem(topPanel, createLabel("Nhà cung cấp:"), cbSupplier, gbc);
         addVerticalItem(topPanel, createLabel("Nhân viên nhập:"), cbEmployee, gbc);
         addVerticalItem(topPanel, createLabel("Sản phẩm (Nhập tên):"), txtProductName, gbc);
         addVerticalItem(topPanel, createLabel("Xuất xứ:"), txtOrigin, gbc);
         addVerticalItem(topPanel, createLabel("Số lượng:"), txtQuantity, gbc);
         addVerticalItem(topPanel, createLabel("Giá nhập (VNĐ):"), txtImportPrice, gbc);
+        addVerticalItem(topPanel, createLabel("Giá bán dự kiến (VNĐ):"), txtSellingPrice, gbc); // Thêm input
 
         // Ghi chú
         addVerticalItem(topPanel, createLabel("Ghi chú:"), new JScrollPane(txtNote), gbc);
@@ -131,7 +134,7 @@ public class ImportOrderGUI extends JFrame {
 
         // ===== TABLE =====
         model = new DefaultTableModel(new String[] {
-                "Sản phẩm", "Số lượng", "Giá nhập", "Thành tiền"
+                "Sản phẩm", "Số lượng", "Giá nhập", "Giá bán", "Thành tiền" // Thêm cột Giá bán
         }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -216,6 +219,10 @@ public class ImportOrderGUI extends JFrame {
                                                       // tra lại
                 cbEmployee.addItem(e);
             }
+            // Load Suppliers
+            for (SupplierDTO s : productBUS.getAllSuppliers()) {
+                cbSupplier.addItem(s);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Lỗi tải dữ liệu: " + e.getMessage());
@@ -234,8 +241,9 @@ public class ImportOrderGUI extends JFrame {
 
             int quantity = Integer.parseInt(txtQuantity.getText());
             double price = Double.parseDouble(txtImportPrice.getText());
+            double sellPrice = Double.parseDouble(txtSellingPrice.getText()); // Lấy giá bán
 
-            if (quantity <= 0 || price <= 0) {
+            if (quantity <= 0 || price <= 0 || sellPrice < 0) {
                 JOptionPane.showMessageDialog(this, "Số lượng và Giá phải lớn hơn 0!");
                 return;
             }
@@ -258,11 +266,13 @@ public class ImportOrderGUI extends JFrame {
                     pName, // Hiển thị tên nhập tay
                     quantity,
                     price,
+                    sellPrice, // Giá bán
                     quantity * price
             });
 
             txtQuantity.setText("");
             txtImportPrice.setText("");
+            txtSellingPrice.setText(""); // Clear
 
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Invalid number format!");
@@ -278,33 +288,12 @@ public class ImportOrderGUI extends JFrame {
 
         ImportOrderDTO order = new ImportOrderDTO();
 
-        // XỬ LÝ NHÀ CUNG CẤP (Tự động tạo nếu chưa có)
-        String supName = txtSupplierName.getText().trim();
-        if (supName.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên Nhà cung cấp!");
+        SupplierDTO selectedSup = (SupplierDTO) cbSupplier.getSelectedItem();
+        if (selectedSup == null) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn Nhà cung cấp!");
             return;
         }
-
-        // Logic tìm hoặc tạo Supplier
-        SupplierDTO supplier = supplierDAO.findByName(supName);
-        if (supplier == null) {
-            supplier = new SupplierDTO();
-            supplier.setName(supName);
-            supplier.setPhone("");
-            supplier.setAddress("");
-            supplier.setEmail("");
-            if (supplierDAO.insert(supplier)) {
-                // Lấy lại ID vừa tạo
-                supplier = supplierDAO.findByName(supName);
-            }
-        }
-
-        if (supplier == null) {
-            JOptionPane.showMessageDialog(this, "Lỗi: Không thể tạo Nhà cung cấp mới!");
-            return;
-        }
-
-        order.setSupplierId(supplier.getSupplierId());
+        order.setSupplierId(selectedSup.getSupplierId());
 
         // FIX: Kiểm tra nhân viên trước khi lấy ID để tránh lỗi NullPointerException
         Employee selectedEmp = (Employee) cbEmployee.getSelectedItem();
@@ -332,13 +321,13 @@ public class ImportOrderGUI extends JFrame {
                 // Tạo sản phẩm mới
                 p = new ProductDTO();
                 p.setName(pName);
-                p.setPrice(0); // Giá bán chưa cập nhật
+                p.setPrice(Double.parseDouble(model.getValueAt(i, 3).toString())); // Lấy giá bán từ table
                 p.setStockQuantity(0); // Stock sẽ được cộng bởi ImportDAO
                 p.setCategoryId(1); // Mặc định danh mục (cần sửa sau)
                 p.setMakerId(1); // Mặc định
-                p.setDescription("Hàng mới nhập từ " + supName);
+                p.setDescription("Hàng mới nhập từ " + selectedSup.getName());
                 p.setOrigin(txtOrigin.getText().trim()); // Lưu xuất xứ
-                p.setSupplierId(supplier.getSupplierId()); // Set Supplier ID
+                p.setSupplierId(selectedSup.getSupplierId()); // Set Supplier ID
                 p.setStatus("Hidden"); // 🔥 QUAN TRỌNG: Set trạng thái Ẩn cho hàng mới
 
                 // Lấy ảnh đại diện từ Panel
@@ -361,10 +350,10 @@ public class ImportOrderGUI extends JFrame {
                     return;
                 }
             } else {
-                // FIX: Nếu sản phẩm đã tồn tại, chỉ cập nhật lại Nhà cung cấp.
-                // KHÔNG cập nhật Xuất xứ ở màn hình này để tránh ghi đè dữ liệu cũ.
-                // Việc sửa Xuất xứ nên được thực hiện ở màn hình Kho Hàng.
-                updateProductSupplier(p.getProductId(), supplier.getSupplierId());
+                // Logic: Nếu sản phẩm đã tồn tại -> Cập nhật Giá bán và Nhà cung cấp
+                // Stock sẽ được cộng dồn bởi DAO
+                double newSellPrice = Double.parseDouble(model.getValueAt(i, 3).toString());
+                updateProductInfo(p.getProductId(), newSellPrice, selectedSup.getSupplierId());
             }
             item.setProductId(p.getProductId());
         }
@@ -381,13 +370,14 @@ public class ImportOrderGUI extends JFrame {
         }
     }
 
-    // FIX: Hàm chỉ cập nhật nhà cung cấp cho sản phẩm đã có khi nhập hàng
-    private void updateProductSupplier(int productId, int supplierId) {
-        String sql = "UPDATE Product SET supplier_id = ? WHERE product_id = ?";
+    // Cập nhật thông tin sản phẩm đã có (Giá bán, Supplier)
+    private void updateProductInfo(int productId, double newPrice, int supplierId) {
+        String sql = "UPDATE Product SET price = ?, supplier_id = ? WHERE product_id = ?";
         try (Connection con = com.keycapstore.config.ConnectDB.getConnection();
                 PreparedStatement pst = con.prepareStatement(sql)) {
-            pst.setInt(1, supplierId);
-            pst.setInt(2, productId);
+            pst.setDouble(1, newPrice);
+            pst.setInt(2, supplierId);
+            pst.setInt(3, productId);
             pst.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();
